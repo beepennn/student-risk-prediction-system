@@ -3,8 +3,9 @@ from fastapi import FastAPI
 from app.database.connection import engine
 from app.database.base import Base
 
-from app.models import user
-from app.models import student
+import app.models.user
+import app.models.student
+import app.models.academic_record
 
 
 Base.metadata.create_all(bind=engine)

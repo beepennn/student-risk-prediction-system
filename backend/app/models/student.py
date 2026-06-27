@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String, DateTime
+from datetime import datetime
 from app.database.base import Base
 
 
@@ -9,12 +10,12 @@ class Student(Base):
 
     student_name = Column(String, nullable=False)
 
-    attendance = Column(Float)
+    roll_no = Column(String, unique=True)
 
-    internal_marks = Column(Float)
+    semester = Column(String)
 
-    quiz_score = Column(Float)
+    department = Column(String)
 
-    assignment_score = Column(Float)
+    email = Column(String)
 
-    risk_level = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
