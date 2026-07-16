@@ -1,5 +1,7 @@
-from sqlalchemy import Column, Integer, String, DateTime
-from datetime import datetime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+
 from app.database.base import Base
 
 
@@ -8,14 +10,46 @@ class Student(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    student_name = Column(String, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
 
-    roll_no = Column(String, unique=True)
+    roll_number = Column(String(20), unique=True, nullable=False)
 
-    semester = Column(String)
+    department = Column(String(100), nullable=False)
 
-    department = Column(String)
+    semester = Column(Integer, nullable=False)
 
-    email = Column(String)
+    phone = Column(String(20), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    parent_email = Column(String(150), nullable=True)
+
+    enrollment_year = Column(Integer, nullable=False)
+
+    status = Column(String(20), default="Active")
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    user = relationship("User", back_populates="student")
+
+    academic_records = relationship(
+        "AcademicRecord",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
+
+    predictions = relationship(
+        "Prediction",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
+
+    notifications = relationship(
+        "Notification",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )

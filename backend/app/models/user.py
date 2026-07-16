@@ -1,5 +1,7 @@
-from sqlalchemy import Column, Integer, String, DateTime
-from datetime import datetime
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+
 from app.database.base import Base
 
 
@@ -8,12 +10,27 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    full_name = Column(String, nullable=False)
+    full_name = Column(String(100), nullable=False)
 
-    email = Column(String, unique=True, nullable=False)
+    email = Column(String(150), unique=True, nullable=False)
 
-    password_hash = Column(String, nullable=False)
+    password_hash = Column(String(255), nullable=False)
 
-    role = Column(String, nullable=False)
+    role = Column(String(20), nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    student = relationship(
+        "Student",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )

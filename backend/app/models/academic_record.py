@@ -1,5 +1,7 @@
 from sqlalchemy import Column, Integer, Float, ForeignKey, DateTime
-from datetime import datetime
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+
 from app.database.base import Base
 
 
@@ -8,18 +10,26 @@ class AcademicRecord(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    student_id = Column(Integer, ForeignKey("students.id"))
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
 
-    attendance_percentage = Column(Float)
+    attendance = Column(Float, nullable=False)
 
-    internal_marks = Column(Float)
+    internal_marks = Column(Float, nullable=False)
 
-    quiz_score = Column(Float)
+    assignment_score = Column(Float, nullable=False)
 
-    assignment_score = Column(Float)
+    quiz_score = Column(Float, nullable=False)
 
-    semester_gpa = Column(Float)
+    previous_gpa = Column(Float, nullable=False)
 
-    failed_subjects = Column(Integer)
+    semester = Column(Integer, nullable=False)
 
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+
+    student = relationship(
+        "Student",
+        back_populates="academic_records"
+    )
