@@ -9,6 +9,7 @@ import app.models.academic_record
 
 from app.routes import students
 from app.routes import academic_records
+from app.routes import users
 
 # Temporary during development
 Base.metadata.create_all(bind=engine)
@@ -18,6 +19,7 @@ app = FastAPI(
 )
 
 # Register Student Routes
+app.include_router(users.router)
 app.include_router(students.router)
 app.include_router(academic_records.router)
 
