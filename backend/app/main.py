@@ -7,7 +7,8 @@ import app.models.user
 import app.models.student
 import app.models.academic_record
 
-from app.routes.students import router as student_router
+from app.routes import students
+from app.routes import academic_records
 
 # Temporary during development
 Base.metadata.create_all(bind=engine)
@@ -17,7 +18,8 @@ app = FastAPI(
 )
 
 # Register Student Routes
-app.include_router(student_router)
+app.include_router(students.router)
+app.include_router(academic_records.router)
 
 
 @app.get("/")
