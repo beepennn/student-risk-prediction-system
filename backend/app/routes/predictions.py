@@ -14,6 +14,7 @@ from app.services.prediction_service import (
 from app.services.ml_service import predict_student_risk
 from app.database.connection import SessionLocal
 from app.services.academic_service import get_latest_academic_record
+from app.services.prediction_service import save_prediction
 
 router = APIRouter(
     prefix="/predictions",
@@ -75,10 +76,12 @@ def generate_prediction(
 
         prediction = predict_student_risk(student_features)
 
-        return {
-            "student_id": student_id,
-            **prediction,
-        }
+        saved_prediction = save_prediction(
+            db,
+            student_id,
+            prediction,
+        )
+        return saved_prediction
 
     finally:
         db.close()

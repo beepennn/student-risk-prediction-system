@@ -27,3 +27,22 @@ def create_prediction(
     db.refresh(db_prediction)
 
     return db_prediction
+
+def save_prediction(
+    db,
+    student_id,
+    prediction_data,
+):
+    prediction = Prediction(
+        student_id=student_id,
+        risk_level=prediction_data["risk_level"],
+        low_probability=prediction_data["low_probability"],
+        medium_probability=prediction_data["medium_probability"],
+        high_probability=prediction_data["high_probability"],
+    )
+
+    db.add(prediction)
+    db.commit()
+    db.refresh(prediction)
+
+    return prediction
