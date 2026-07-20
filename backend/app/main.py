@@ -13,6 +13,7 @@ from app.routes import users
 from app.routes import predictions
 from app.routes import recommendations
 from app.routes import notifications
+from app.routes import interventions
 
 # Temporary during development
 Base.metadata.create_all(bind=engine)
@@ -28,6 +29,7 @@ app.include_router(academic_records.router)
 app.include_router(predictions.router)
 app.include_router(recommendations.router)
 app.include_router(notifications.router)
+app.include_router(interventions.router)
 
 @app.get("/")
 def home():

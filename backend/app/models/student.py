@@ -59,3 +59,4 @@ class Student(Base):
         back_populates="student",
         cascade="all, delete-orphan",
     )
+    
