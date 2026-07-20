@@ -11,6 +11,7 @@ from app.services.prediction_service import (
     get_prediction,
     create_prediction,
 )
+from app.services.ml_service import predict_student_risk
 
 router = APIRouter(
     prefix="/predictions",
@@ -47,3 +48,29 @@ def add_prediction(
     db: Session = Depends(get_db),
 ):
     return create_prediction(db, prediction)
+
+@router.post("/generate/{student_id}")
+def generate_prediction(
+    student_id: int,
+):
+    """
+    Temporary ML endpoint.
+
+    Later this will fetch academic data from database
+    and send it to the trained ML model.
+    """
+
+    dummy_student = {
+        "attendance": 90,
+        "internal_marks": 42,
+        "assignment_score": 18,
+        "quiz_score": 9,
+        "previous_gpa": 3.6,
+    }
+
+    prediction = predict_student_risk(dummy_student)
+
+    return {
+        "student_id": student_id,
+        **prediction,
+    }
