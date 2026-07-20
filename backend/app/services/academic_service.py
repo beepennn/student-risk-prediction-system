@@ -27,3 +27,14 @@ def create_academic_record(
     db.refresh(db_record)
 
     return db_record
+
+from app.models.academic_record import AcademicRecord
+
+
+def get_latest_academic_record(db: Session, student_id: int):
+    return (
+        db.query(AcademicRecord)
+        .filter(AcademicRecord.student_id == student_id)
+        .order_by(AcademicRecord.created_at.desc())
+        .first()
+    )

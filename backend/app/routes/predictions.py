@@ -12,6 +12,8 @@ from app.services.prediction_service import (
     create_prediction,
 )
 from app.services.ml_service import predict_student_risk
+from app.database.connection import SessionLocal
+from app.services.academic_service import get_latest_academic_record
 
 router = APIRouter(
     prefix="/predictions",
@@ -53,24 +55,30 @@ def add_prediction(
 def generate_prediction(
     student_id: int,
 ):
-    """
-    Temporary ML endpoint.
+    db = SessionLocal()
 
-    Later this will fetch academic data from database
-    and send it to the trained ML model.
-    """
+    try:
+        academic = get_latest_academic_record(db, student_id)
 
-    dummy_student = {
-        "attendance": 90,
-        "internal_marks": 42,
-        "assignment_score": 18,
-        "quiz_score": 9,
-        "previous_gpa": 3.6,
-    }
+        if academic is None:
+            return {
+                "error": "No academic record found for this student."
+            }
 
-    prediction = predict_student_risk(dummy_student)
+        student_features = {
+            "attendance": academic.attendance,
+            "internal_marks": academic.internal_marks,
+            "assignment_score": academic.assignment_score,
+            "quiz_score": academic.quiz_score,
+            "previous_gpa": academic.previous_gpa,
+        }
 
-    return {
-        "student_id": student_id,
-        **prediction,
-    }
+        prediction = predict_student_risk(student_features)
+
+        return {
+            "student_id": student_id,
+            **prediction,
+        }
+
+    finally:
+        db.close()
