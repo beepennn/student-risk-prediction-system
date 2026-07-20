@@ -10,6 +10,8 @@ import app.models.academic_record
 from app.routes import students
 from app.routes import academic_records
 from app.routes import users
+from app.routes import predictions
+from app.routes import recommendations
 
 # Temporary during development
 Base.metadata.create_all(bind=engine)
@@ -22,7 +24,8 @@ app = FastAPI(
 app.include_router(users.router)
 app.include_router(students.router)
 app.include_router(academic_records.router)
-
+app.include_router(predictions.router)
+app.include_router(recommendations.router)
 
 @app.get("/")
 def home():
