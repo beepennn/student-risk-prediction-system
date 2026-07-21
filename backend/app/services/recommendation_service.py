@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.recommendation import Recommendation
@@ -8,12 +9,23 @@ def get_recommendations(db: Session):
     return db.query(Recommendation).all()
 
 
-def get_recommendation(db: Session, recommendation_id: int):
-    return (
+def get_recommendation(
+    db: Session,
+    recommendation_id: int,
+):
+    recommendation = (
         db.query(Recommendation)
         .filter(Recommendation.id == recommendation_id)
         .first()
     )
+
+    if recommendation is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Recommendation not found.",
+        )
+
+    return recommendation
 
 
 def create_recommendation(
@@ -30,7 +42,11 @@ def create_recommendation(
 
     return db_recommendation
 
-def generate_recommendation(db: Session, prediction):
+
+def generate_recommendation(
+    db: Session,
+    prediction,
+):
     if prediction.risk_level == "High":
         title = "Immediate Intervention Required"
         description = (

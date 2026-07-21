@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.intervention import Intervention
@@ -8,12 +9,23 @@ def get_interventions(db: Session):
     return db.query(Intervention).all()
 
 
-def get_intervention(db: Session, intervention_id: int):
-    return (
+def get_intervention(
+    db: Session,
+    intervention_id: int,
+):
+    intervention = (
         db.query(Intervention)
         .filter(Intervention.id == intervention_id)
         .first()
     )
+
+    if intervention is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Intervention not found.",
+        )
+
+    return intervention
 
 
 def create_intervention(

@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.notification import Notification
@@ -8,12 +9,23 @@ def get_notifications(db: Session):
     return db.query(Notification).all()
 
 
-def get_notification(db: Session, notification_id: int):
-    return (
+def get_notification(
+    db: Session,
+    notification_id: int,
+):
+    notification = (
         db.query(Notification)
         .filter(Notification.id == notification_id)
         .first()
     )
+
+    if notification is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Notification not found.",
+        )
+
+    return notification
 
 
 def create_notification(
@@ -30,7 +42,12 @@ def create_notification(
 
     return db_notification
 
-def generate_notification(db: Session, student_id: int, recommendation):
+
+def generate_notification(
+    db: Session,
+    student_id: int,
+    recommendation,
+):
     message = (
         f"{recommendation.title}: {recommendation.description}"
     )
