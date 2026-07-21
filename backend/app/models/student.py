@@ -53,3 +53,10 @@ class Student(Base):
         back_populates="student",
         cascade="all, delete-orphan",
     )
+
+    interventions = relationship(
+        "Intervention",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
+    
