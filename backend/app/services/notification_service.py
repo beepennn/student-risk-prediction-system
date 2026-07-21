@@ -29,3 +29,22 @@ def create_notification(
     db.refresh(db_notification)
 
     return db_notification
+
+def generate_notification(db: Session, student_id: int, recommendation):
+    message = (
+        f"{recommendation.title}: {recommendation.description}"
+    )
+
+    notification = Notification(
+        student_id=student_id,
+        title="Student Risk Alert",
+        message=message,
+        notification_type="in_app",
+        is_sent=False,
+    )
+
+    db.add(notification)
+    db.commit()
+    db.refresh(notification)
+
+    return notification

@@ -15,6 +15,8 @@ from app.services.ml_service import predict_student_risk
 from app.database.connection import SessionLocal
 from app.services.academic_service import get_latest_academic_record
 from app.services.prediction_service import save_prediction
+from app.services.recommendation_service import generate_recommendation
+from app.services.notification_service import generate_notification
 
 router = APIRouter(
     prefix="/predictions",
@@ -81,6 +83,16 @@ def generate_prediction(
             student_id,
             prediction,
         )
+        recommendation = generate_recommendation(
+            db,
+            saved_prediction,
+        )
+        generate_notification(
+            db,
+            student_id,
+            recommendation,
+        )
+
         return saved_prediction
 
     finally:
