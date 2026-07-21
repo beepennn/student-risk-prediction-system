@@ -9,6 +9,9 @@ from app.services.user_service import (
     create_user,
 )
 
+from app.core.dependencies import require_admin
+from app.models.user import User
+
 router = APIRouter(
     prefix="/users",
     tags=["Users"],
@@ -24,7 +27,10 @@ def get_db():
 
 
 @router.get("/", response_model=list[UserResponse])
-def read_users(db: Session = Depends(get_db)):
+def read_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
     return get_users(db)
 
 
@@ -37,5 +43,6 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
 def add_user(
     user: UserCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     return create_user(db, user)

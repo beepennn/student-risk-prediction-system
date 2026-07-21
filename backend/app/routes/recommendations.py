@@ -12,6 +12,9 @@ from app.services.recommendation_service import (
     create_recommendation,
 )
 
+from app.core.dependencies import require_teacher
+from app.models.user import User
+
 router = APIRouter(
     prefix="/recommendations",
     tags=["Recommendations"],
@@ -29,6 +32,7 @@ def get_db():
 @router.get("/", response_model=list[RecommendationResponse])
 def read_recommendations(
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_recommendations(db)
 
@@ -37,6 +41,7 @@ def read_recommendations(
 def read_recommendation(
     recommendation_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_recommendation(db, recommendation_id)
 
@@ -45,5 +50,6 @@ def read_recommendation(
 def add_recommendation(
     recommendation: RecommendationCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return create_recommendation(db, recommendation)

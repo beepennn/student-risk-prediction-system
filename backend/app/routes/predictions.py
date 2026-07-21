@@ -18,6 +18,9 @@ from app.services.prediction_service import save_prediction
 from app.services.recommendation_service import generate_recommendation
 from app.services.notification_service import generate_notification
 
+from app.core.dependencies import require_teacher
+from app.models.user import User
+
 router = APIRouter(
     prefix="/predictions",
     tags=["Predictions"],
@@ -35,6 +38,7 @@ def get_db():
 @router.get("/", response_model=list[PredictionResponse])
 def read_predictions(
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_predictions(db)
 
@@ -43,6 +47,7 @@ def read_predictions(
 def read_prediction(
     prediction_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_prediction(db, prediction_id)
 
@@ -51,12 +56,14 @@ def read_prediction(
 def add_prediction(
     prediction: PredictionCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return create_prediction(db, prediction)
 
 @router.post("/generate/{student_id}")
 def generate_prediction(
     student_id: int,
+    current_user: User = Depends(require_teacher),
 ):
     db = SessionLocal()
 

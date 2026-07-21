@@ -15,6 +15,7 @@ from app.routes import recommendations
 from app.routes import notifications
 from app.routes import interventions
 from app.routes import reports
+from app.routes import auth
 
 # Temporary during development
 Base.metadata.create_all(bind=engine)
@@ -32,6 +33,7 @@ app.include_router(recommendations.router)
 app.include_router(notifications.router)
 app.include_router(interventions.router)
 app.include_router(reports.router)
+app.include_router(auth.router)
 
 @app.get("/")
 def home():

@@ -12,6 +12,9 @@ from app.services.intervention_service import (
     create_intervention,
 )
 
+from app.core.dependencies import require_teacher
+from app.models.user import User
+
 router = APIRouter(
     prefix="/interventions",
     tags=["Interventions"],
@@ -29,6 +32,7 @@ def get_db():
 @router.get("/", response_model=list[InterventionResponse])
 def read_interventions(
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_interventions(db)
 
@@ -37,6 +41,7 @@ def read_interventions(
 def read_intervention(
     intervention_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_intervention(db, intervention_id)
 
@@ -45,5 +50,6 @@ def read_intervention(
 def add_intervention(
     intervention: InterventionCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return create_intervention(db, intervention)

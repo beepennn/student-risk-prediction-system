@@ -11,6 +11,9 @@ from app.services.report_service import get_low_risk_students
 from app.services.report_service import get_latest_predictions
 from app.services.report_service import get_intervention_summary
 
+from app.core.dependencies import require_teacher
+from app.models.user import User
+
 router = APIRouter(
     prefix="/reports",
     tags=["Reports"],
@@ -28,47 +31,55 @@ def get_db():
 @router.get("/dashboard-summary")
 def dashboard_summary(
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_dashboard_summary(db)
 
 @router.get("/high-risk-students")
 def high_risk_students(
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_high_risk_students(db)
 
 @router.get("/students-by-department")
 def students_by_department(
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_students_by_department(db)
 
 @router.get("/students-by-semester")
 def students_by_semester(
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_students_by_semester(db)
 
 @router.get("/medium-risk-students")
 def medium_risk_students(
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_medium_risk_students(db)
 
 @router.get("/low-risk-students")
 def low_risk_students(
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_low_risk_students(db)
 
 @router.get("/latest-predictions")
 def latest_predictions(
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_latest_predictions(db)
 
 @router.get("/intervention-summary")
 def intervention_summary(
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
 ):
     return get_intervention_summary(db)
