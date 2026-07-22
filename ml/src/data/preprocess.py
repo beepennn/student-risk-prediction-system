@@ -2,26 +2,35 @@ import pandas as pd
 from pathlib import Path
 
 
+# ============================================================
+# 1. LOAD RAW DATASET
+# ============================================================
+
 def load_data():
     """
-    Load raw student performance dataset.
+    Load the raw student performance dataset.
     """
 
-    data_path = Path("data/raw/student_performance.csv")
+    data_path = Path(
+        "data/raw/student_performance.csv"
+    )
 
     df = pd.read_csv(data_path)
 
     return df
 
 
+# ============================================================
+# 2. CREATE ACADEMIC RISK TARGET
+# ============================================================
 
 def create_academic_risk(df):
     """
-    Create target variable from FinalGrade.
+    Create the AcademicRisk target variable from FinalGrade.
 
-    Mapping:
-    80-100  -> Low Risk
-    70-79   -> Medium Risk
+    Risk Classification:
+    80-100   -> Low Risk
+    70-79    -> Medium Risk
     Below 70 -> High Risk
     """
 
@@ -39,30 +48,82 @@ def create_academic_risk(df):
         else:
             return "High Risk"
 
-
-    df["AcademicRisk"] = df["FinalGrade"].apply(risk_category)
+    df["AcademicRisk"] = df["FinalGrade"].apply(
+        risk_category
+    )
 
     return df
 
 
+# ============================================================
+# 3. REMOVE MISSING TARGET VALUES
+# ============================================================
+
+def remove_missing_target(df):
+    """
+    Remove records where AcademicRisk is missing.
+
+    AcademicRisk is derived from FinalGrade.
+    If FinalGrade is missing, the target cannot be
+    determined reliably.
+
+    Target values are NOT imputed.
+    """
+
+    before_count = len(df)
+
+    df = df.dropna(
+        subset=["AcademicRisk"]
+    ).copy()
+
+    after_count = len(df)
+
+    removed_count = before_count - after_count
+
+    print("\n========== MISSING TARGET HANDLING ==========")
+    print(
+        f"Rows before removing missing target: {before_count}"
+    )
+
+    print(
+        f"Rows removed due to missing AcademicRisk: {removed_count}"
+    )
+
+    print(
+        f"Rows remaining: {after_count}"
+    )
+
+    return df
+
+
+# ============================================================
+# 4. CLEAN DATA
+# ============================================================
 
 def clean_data(df):
     """
-    Remove unnecessary columns
-    and fix invalid values.
+    Remove unnecessary columns and handle invalid values.
     """
 
-    # Remove identifier columns
+    # Remove identifier columns.
+    # These do not provide meaningful predictive information.
     df = df.drop(
-        columns=["StudentID", "Name"]
+        columns=[
+            "StudentID",
+            "Name"
+        ]
     )
 
-    # Remove FinalGrade to avoid target leakage
+    # FinalGrade was used to create AcademicRisk.
+    # Keeping it would cause target leakage.
     df = df.drop(
-        columns=["FinalGrade"]
+        columns=[
+            "FinalGrade"
+        ]
     )
 
-    # Replace impossible negative study hours
+    # Study Hours cannot be negative.
+    # Replace invalid negative values with NaN.
     df.loc[
         df["Study Hours"] < 0,
         "Study Hours"
@@ -71,54 +132,65 @@ def clean_data(df):
     return df
 
 
+# ============================================================
+# 5. HANDLE MISSING FEATURE VALUES
+# ============================================================
 
 def handle_missing_values(df):
     """
-    Handle missing values.
+    Handle missing values in feature columns.
 
-    Numerical:
-    Median imputation
+    Numerical features:
+    Median imputation.
 
-    Categorical:
-    Mode imputation
+    Categorical features:
+    Mode imputation.
     """
 
+    # Select numerical feature columns
     numeric_columns = df.select_dtypes(
         include=["number"]
     ).columns
 
-
+    # Select categorical feature columns
     categorical_columns = df.select_dtypes(
         include=["object", "string"]
     ).columns
 
-
+    # Median imputation for numerical features
     for column in numeric_columns:
+
         df[column] = df[column].fillna(
             df[column].median()
         )
 
-
+    # Mode imputation for categorical features
     for column in categorical_columns:
-        df[column] = df[column].fillna(
-            df[column].mode()[0]
-        )
 
+        if not df[column].mode().empty:
+
+            df[column] = df[column].fillna(
+                df[column].mode()[0]
+            )
 
     return df
 
 
+# ============================================================
+# 6. ENCODE CATEGORICAL FEATURES
+# ============================================================
 
 def encode_features(X):
     """
-    Encode only feature columns.
-    Target remains unchanged.
+    Convert categorical feature columns into numerical
+    representation using one-hot encoding.
+
+    drop_first=True avoids redundant dummy variables.
     """
 
     categorical_columns = X.select_dtypes(
         include=["object", "string"]
     ).columns
-
 
     X = pd.get_dummies(
         X,
@@ -126,80 +198,165 @@ def encode_features(X):
         drop_first=True
     )
 
-
     return X
 
 
+# ============================================================
+# 7. SAVE PROCESSED DATASET
+# ============================================================
 
 def save_processed_data(X, y):
-    """
-    Save final processed dataset.
-    """
 
     output_path = Path(
         "data/processed/student_performance_processed.csv"
     )
 
-
     processed_data = X.copy()
 
-    processed_data["AcademicRisk"] = y
-
+    processed_data["AcademicRisk"] = y.values
 
     processed_data.to_csv(
         output_path,
         index=False
     )
 
+    print(
+        "\n✅ Processed dataset saved successfully."
+    )
 
-    print("\n✅ Processed dataset saved successfully.")
-
-
-
-if __name__ == "__main__":
-
-    # Load dataset
-    df = load_data()
-
-
-    # Create target
-    df = create_academic_risk(df)
-
-
-    # Separate target and features
-    y = df["AcademicRisk"]
-
-    X = df.drop(
-        columns=["AcademicRisk"]
+    print(
+        f"Saved to: {output_path}"
     )
 
 
-    # Clean features
+# ============================================================
+# MAIN PREPROCESSING PIPELINE
+# ============================================================
+
+if __name__ == "__main__":
+
+    # --------------------------------------------------------
+    # Step 1: Load raw dataset
+    # --------------------------------------------------------
+
+    df = load_data()
+
+    print(
+        "Dataset loaded successfully."
+    )
+
+    print(
+        "\nOriginal dataset shape:"
+    )
+
+    print(
+        df.shape
+    )
+
+
+    # --------------------------------------------------------
+    # Step 2: Create AcademicRisk target
+    # --------------------------------------------------------
+
+    df = create_academic_risk(df)
+
+
+    # --------------------------------------------------------
+    # Step 3: Remove rows with missing target
+    # --------------------------------------------------------
+
+    df = remove_missing_target(df)
+
+
+    # --------------------------------------------------------
+    # Step 4: Separate target and features
+    # --------------------------------------------------------
+
+    y = df["AcademicRisk"].copy()
+
+    X = df.drop(
+        columns=[
+            "AcademicRisk"
+        ]
+    ).copy()
+
+
+    # --------------------------------------------------------
+    # Step 5: Clean feature data
+    # --------------------------------------------------------
+
     X = clean_data(X)
 
 
-    # Handle missing values
+    # --------------------------------------------------------
+    # Step 6: Handle missing feature values
+    # --------------------------------------------------------
+
     X = handle_missing_values(X)
 
 
-    # Encode categorical features
+    # --------------------------------------------------------
+    # Step 7: Encode categorical features
+    # --------------------------------------------------------
+
     X = encode_features(X)
 
 
-    print("\n========== PROCESSED DATA INFORMATION ==========")
+    # --------------------------------------------------------
+    # Step 8: Display processed dataset information
+    # --------------------------------------------------------
+
+    print(
+        "\n========== PROCESSED DATA INFORMATION =========="
+    )
+
     X.info()
 
 
-    print("\n========== TARGET DISTRIBUTION ==========")
-    print(y.value_counts())
+    # --------------------------------------------------------
+    # Step 9: Display target distribution
+    # --------------------------------------------------------
+
+    print(
+        "\n========== TARGET DISTRIBUTION =========="
+    )
+
+    print(
+        y.value_counts()
+    )
 
 
-    print("\n========== MISSING VALUES ==========")
-    print(X.isnull().sum())
+    # --------------------------------------------------------
+    # Step 10: Display missing values
+    # --------------------------------------------------------
+
+    print(
+        "\n========== MISSING VALUES =========="
+    )
+
+    print(
+        X.isnull().sum()
+    )
 
 
-    print("\n========== FIRST 5 ROWS ==========")
-    print(X.head())
+    # --------------------------------------------------------
+    # Step 11: Display first five rows
+    # --------------------------------------------------------
+
+    print(
+        "\n========== FIRST 5 ROWS =========="
+    )
+
+    print(
+        X.head()
+    )
 
 
-    save_processed_data(X, y)
+    # --------------------------------------------------------
+    # Step 12: Save processed dataset
+    # --------------------------------------------------------
+
+    save_processed_data(
+        X,
+        y
+    )
