@@ -31,10 +31,22 @@ def get_db():
 
 @router.get("/", response_model=list[StudentResponse])
 def read_students(
+    skip: int = 0,
+    limit: int = 10,
+    search: str | None = None,
+    semester: int | None = None,
+    department: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_students(db)
+    return get_students(
+        db=db,
+        skip=skip,
+        limit=limit,
+        search=search,
+        semester=semester,
+        department=department,
+    )
 
 
 @router.get("/me", response_model=StudentResponse)

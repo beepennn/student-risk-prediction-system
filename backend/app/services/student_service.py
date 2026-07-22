@@ -1,12 +1,48 @@
 from fastapi import HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.student import Student
+from app.models.user import User
 from app.schemas.student import StudentCreate
 
 
-def get_students(db: Session):
-    return db.query(Student).all()
+def get_students(
+    db: Session,
+    skip: int = 0,
+    limit: int = 10,
+    search: str | None = None,
+    semester: int | None = None,
+    department: str | None = None,
+):
+    query = db.query(Student)
+
+    if search:
+        query = (
+            query.join(Student.user)
+            .filter(
+                or_(
+                    User.full_name.ilike(f"%{search}%"),
+                    Student.roll_number.ilike(f"%{search}%"),
+                )
+            )
+        )
+
+    if semester is not None:
+        query = query.filter(
+            Student.semester == semester
+        )
+
+    if department:
+        query = query.filter(
+            Student.department.ilike(f"%{department}%")
+        )
+
+    return (
+        query.offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_student(db: Session, student_id: int):
