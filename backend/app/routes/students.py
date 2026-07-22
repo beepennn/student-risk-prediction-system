@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.database.connection import SessionLocal
 from app.core.dependencies import (
     require_teacher,
+    require_admin,
     get_current_user,
 )
 from app.models.user import User
@@ -81,6 +82,6 @@ def read_student(
 def add_student(
     student: StudentCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_teacher),
+    current_user: User = Depends(require_admin),
 ):
     return create_student(db, student)

@@ -35,7 +35,11 @@ def read_users(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-def read_user(user_id: int, db: Session = Depends(get_db)):
+def read_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
     return get_user(db, user_id)
 
 
