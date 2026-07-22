@@ -13,6 +13,14 @@ from app.services.teacher_service import (
     get_teacher_interventions,
 )
 
+from app.services.intervention_service import (
+    create_teacher_intervention,
+)
+
+from app.schemas.intervention import (
+    TeacherInterventionRequest,
+)
+
 router = APIRouter(
     prefix="/teacher",
     tags=["Teacher"],
@@ -59,4 +67,19 @@ def read_teacher_interventions(
     return get_teacher_interventions(
         db,
         current_user.id,
+    )
+
+@router.post("/students/{student_id}/intervene")
+def intervene_student(
+    student_id: int,
+    request: TeacherInterventionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
+):
+    return create_teacher_intervention(
+        db=db,
+        teacher_id=current_user.id,
+        student_id=student_id,
+        action_taken=request.action_taken,
+        remarks=request.remarks,
     )

@@ -56,3 +56,24 @@ def get_student_interventions(
         )
         .all()
     )
+
+
+def create_teacher_intervention(
+    db: Session,
+    teacher_id: int,
+    student_id: int,
+    action_taken: str,
+    remarks: str,
+):
+    intervention = Intervention(
+        student_id=student_id,
+        teacher_id=teacher_id,
+        action_taken=action_taken,
+        remarks=remarks,
+    )
+
+    db.add(intervention)
+    db.commit()
+    db.refresh(intervention)
+
+    return intervention
