@@ -1,16 +1,29 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 
 from app.database.connection import SessionLocal
 from app.schemas.prediction import (
     PredictionCreate,
     PredictionResponse,
 )
+
 from app.services.prediction_service import (
     get_predictions,
     get_prediction,
     create_prediction,
+    get_latest_prediction,
 )
+
+from app.core.dependencies import (
+    require_teacher,
+    get_current_user,
+)
+
+from app.services.student_service import (
+    get_student_by_user_id,
+)
+
 from app.services.ml_service import predict_student_risk
 from app.database.connection import SessionLocal
 from app.services.academic_service import get_latest_academic_record
@@ -18,7 +31,6 @@ from app.services.prediction_service import save_prediction
 from app.services.recommendation_service import generate_recommendation
 from app.services.notification_service import generate_notification
 
-from app.core.dependencies import require_teacher
 from app.models.user import User
 
 router = APIRouter(
@@ -42,6 +54,37 @@ def read_predictions(
 ):
     return get_predictions(db)
 
+@router.get(
+    "/me",
+    response_model=PredictionResponse,
+)
+def get_my_prediction(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    student = get_student_by_user_id(
+        db,
+        current_user.id,
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student profile not found.",
+        )
+
+    prediction = get_latest_prediction(
+        db,
+        student.id,
+    )
+
+    if prediction is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Prediction not found.",
+        )
+
+    return prediction
 
 @router.get("/{prediction_id}", response_model=PredictionResponse)
 def read_prediction(

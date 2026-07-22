@@ -65,3 +65,22 @@ def generate_notification(
     db.refresh(notification)
 
     return notification
+
+def get_student_notifications(
+    db: Session,
+    student_id: int,
+):
+    notifications = (
+        db.query(Notification)
+        .filter(Notification.student_id == student_id)
+        .order_by(Notification.id.desc())
+        .all()
+    )
+
+    if not notifications:
+        raise HTTPException(
+            status_code=404,
+            detail="Notifications not found.",
+        )
+
+    return notifications

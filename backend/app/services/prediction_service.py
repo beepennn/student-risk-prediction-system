@@ -61,3 +61,14 @@ def save_prediction(
     db.refresh(prediction)
 
     return prediction
+
+def get_latest_prediction(
+    db: Session,
+    student_id: int,
+):
+    return (
+        db.query(Prediction)
+        .filter(Prediction.student_id == student_id)
+        .order_by(Prediction.prediction_date.desc())
+        .first()
+    )
