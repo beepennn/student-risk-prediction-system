@@ -10,6 +10,7 @@ from app.services.intervention_service import (
     get_interventions,
     get_intervention,
     create_intervention,
+    get_student_interventions,
 )
 
 from app.core.dependencies import require_teacher
@@ -53,3 +54,17 @@ def add_intervention(
     current_user: User = Depends(require_teacher),
 ):
     return create_intervention(db, intervention)
+
+@router.get(
+    "/student/{student_id}",
+    response_model=list[InterventionResponse],
+)
+def read_student_interventions(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
+):
+    return get_student_interventions(
+        db,
+        student_id,
+    )

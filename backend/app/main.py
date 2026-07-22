@@ -18,6 +18,7 @@ from app.routes import reports
 from app.routes import auth
 from app.core.exception_handler import register_exception_handlers
 from app.middleware.logging_middleware import logging_middleware
+from app.routes import teacher
 
 # Temporary during development
 Base.metadata.create_all(bind=engine)
@@ -39,6 +40,7 @@ app.include_router(notifications.router)
 app.include_router(interventions.router)
 app.include_router(reports.router)
 app.include_router(auth.router)
+app.include_router(teacher.router)
 
 @app.get("/")
 def home():

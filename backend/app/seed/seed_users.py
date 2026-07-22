@@ -48,19 +48,26 @@ def seed_users():
         )
 
         if existing:
+            existing.full_name = user["full_name"]
+            existing.role = user["role"]
+            existing.is_active = True
+            existing.password_hash = hash_password(user["password"])
             continue
-
-        db.add(
-            User(
-                full_name=user["full_name"],
-                email=user["email"],
-                password_hash=hash_password(user["password"]),
-                role=user["role"],
-                is_active=True,
+        else:
+            db.add(
+                User(
+                    full_name=user["full_name"],
+                    email=user["email"],
+                    password_hash=hash_password(user["password"]),
+                    role=user["role"],
+                    is_active=True,
+                )
             )
-        )
 
     db.commit()
     db.close()
 
     print("Users seeded successfully.")
+
+if __name__ == "__main__":
+    seed_users()

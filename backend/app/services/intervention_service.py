@@ -41,3 +41,18 @@ def create_intervention(
     db.refresh(db_intervention)
 
     return db_intervention
+
+def get_student_interventions(
+    db: Session,
+    student_id: int,
+):
+    return (
+        db.query(Intervention)
+        .filter(
+            Intervention.student_id == student_id
+        )
+        .order_by(
+            Intervention.id.desc()
+        )
+        .all()
+    )

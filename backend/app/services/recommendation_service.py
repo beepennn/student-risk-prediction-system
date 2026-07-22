@@ -85,17 +85,13 @@ def get_latest_recommendation(
     db: Session,
     prediction_id: int,
 ):
-    recommendation = (
+    return (
         db.query(Recommendation)
-        .filter(Recommendation.prediction_id == prediction_id)
-        .order_by(Recommendation.id.desc())
+        .filter(
+            Recommendation.prediction_id == prediction_id
+        )
+        .order_by(
+            Recommendation.id.desc()
+        )
         .first()
     )
-
-    if recommendation is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Recommendation not found.",
-        )
-
-    return recommendation
