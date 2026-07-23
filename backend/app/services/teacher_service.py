@@ -1,14 +1,17 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
+from sqlalchemy import extract
+from datetime import datetime
 
 from app.models.student import Student
 from app.models.academic_record import AcademicRecord
 from app.models.prediction import Prediction
 from app.models.intervention import Intervention
+from app.models.user import User
 
 from app.services.prediction_service import get_latest_prediction
 from app.services.recommendation_service import get_latest_recommendation
-
 
 def get_student_profile(
     db: Session,
@@ -69,36 +72,60 @@ def get_student_profile(
         "interventions": interventions,
     }
 
-
 def get_teacher_dashboard(
     db: Session,
     teacher_id: int,
 ):
-    total_students = db.query(Student).count()
+    students = db.query(Student).all()
 
-    high_risk = (
-        db.query(Prediction)
-        .filter(
-            Prediction.risk_level == "High"
-        )
-        .count()
-    )
+    total_students = len(students)
 
-    medium_risk = (
-        db.query(Prediction)
-        .filter(
-            Prediction.risk_level == "Medium"
-        )
-        .count()
-    )
+    high_risk_students = []
+    medium_risk_students = []
+    low_risk_students = []
 
-    low_risk = (
-        db.query(Prediction)
-        .filter(
-            Prediction.risk_level == "Low"
+    students_without_intervention = []
+
+    for student in students:
+
+        prediction = get_latest_prediction(
+            db,
+            student.id,
         )
-        .count()
-    )
+
+        if prediction is None:
+            continue
+
+        student_info = {
+            "student_id": student.id,
+            "roll_number": student.roll_number,
+            "risk_level": prediction.risk_level,
+        }
+
+        if prediction.risk_level == "High":
+            high_risk_students.append(student_info)
+
+        elif prediction.risk_level == "Medium":
+            medium_risk_students.append(student_info)
+
+        else:
+            low_risk_students.append(student_info)
+
+        intervention = (
+            db.query(Intervention)
+            .filter(
+                Intervention.student_id == student.id
+            )
+            .first()
+        )
+
+        if intervention is None:
+            students_without_intervention.append(
+                {
+                    "student_id": student.id,
+                    "roll_number": student.roll_number,
+                }
+            )
 
     total_interventions = (
         db.query(Intervention)
@@ -121,11 +148,22 @@ def get_teacher_dashboard(
     )
 
     return {
-        "total_students": total_students,
-        "high_risk_students": high_risk,
-        "medium_risk_students": medium_risk,
-        "low_risk_students": low_risk,
-        "total_interventions": total_interventions,
+        "summary": {
+            "total_students": total_students,
+            "high_risk_students": len(high_risk_students),
+            "medium_risk_students": len(medium_risk_students),
+            "low_risk_students": len(low_risk_students),
+            "total_interventions": total_interventions,
+        },
+
+        "high_risk_students": high_risk_students,
+
+        "medium_risk_students": medium_risk_students,
+
+        "low_risk_students": low_risk_students,
+
+        "students_without_intervention": students_without_intervention,
+
         "recent_interventions": recent_interventions,
     }
 
@@ -162,3 +200,89 @@ def get_teacher_interventions(
         )
 
     return results
+
+def search_students(
+    db: Session,
+    query: str,
+):
+    students = (
+        db.query(Student)
+        .join(User, User.id == Student.user_id)
+        .filter(
+            or_(
+                Student.roll_number.ilike(f"%{query}%"),
+                User.full_name.ilike(f"%{query}%"),
+                Student.department.ilike(f"%{query}%"),
+            )
+        )
+        .all()
+    )
+
+    return [
+        {
+            "student_id": student.id,
+            "roll_number": student.roll_number,
+            "student_name": student.user.full_name,
+            "department": student.department,
+            "semester": student.semester,
+            "status": student.status,
+        }
+        for student in students
+    ]
+
+def get_teacher_analytics(
+    db: Session,
+    teacher_id: int,
+):
+    current_month = datetime.utcnow().month
+    current_year = datetime.utcnow().year
+
+    total_interventions = (
+        db.query(Intervention)
+        .filter(
+            Intervention.teacher_id == teacher_id
+        )
+        .count()
+    )
+
+    interventions_this_month = (
+        db.query(Intervention)
+        .filter(
+            Intervention.teacher_id == teacher_id,
+            extract(
+                "month",
+                Intervention.intervention_date,
+            ) == current_month,
+            extract(
+                "year",
+                Intervention.intervention_date,
+            ) == current_year,
+        )
+        .count()
+    )
+
+    students_handled = (
+        db.query(Intervention.student_id)
+        .filter(
+            Intervention.teacher_id == teacher_id
+        )
+        .distinct()
+        .count()
+    )
+
+    dashboard = get_teacher_dashboard(
+        db,
+        teacher_id,
+    )
+
+    return {
+        "total_interventions": total_interventions,
+        "interventions_this_month": interventions_this_month,
+        "students_handled": students_handled,
+        "high_risk_students": dashboard["summary"]["high_risk_students"],
+        "medium_risk_students": dashboard["summary"]["medium_risk_students"],
+        "low_risk_students": dashboard["summary"]["low_risk_students"],
+        "students_without_intervention": len(
+            dashboard["students_without_intervention"]
+        ),
+    }

@@ -11,6 +11,8 @@ from app.services.teacher_service import (
     get_student_profile,
     get_teacher_dashboard,
     get_teacher_interventions,
+    search_students,
+    get_teacher_analytics,
 )
 
 from app.services.intervention_service import (
@@ -82,4 +84,25 @@ def intervene_student(
         student_id=student_id,
         action_taken=request.action_taken,
         remarks=request.remarks,
+    )
+
+@router.get("/students/search")
+def search_student(
+    q: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
+):
+    return search_students(
+        db,
+        q,
+    )
+
+@router.get("/analytics")
+def teacher_analytics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
+):
+    return get_teacher_analytics(
+        db,
+        current_user.id,
     )
