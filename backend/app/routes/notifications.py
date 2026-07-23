@@ -141,6 +141,7 @@ def send_notification(
     return mark_notification_as_sent(
         db,
         notification_id,
+        current_user.id,
     )
 
 
@@ -153,6 +154,7 @@ def remove_notification(
     return delete_notification(
         db,
         notification_id,
+        current_user.id,
     )
 
 
@@ -186,4 +188,5 @@ def add_notification(
     return create_notification(
         db,
         notification,
+        current_user.id,
     )

@@ -5,6 +5,8 @@ from app.models.prediction import Prediction
 from app.models.student import Student
 from app.schemas.prediction import PredictionCreate
 
+from app.services.audit_service import create_audit_log
+
 
 def get_predictions(db: Session):
     return db.query(Prediction).all()
@@ -63,6 +65,7 @@ def save_prediction(
 
     return prediction
 
+
 def get_latest_prediction(
     db: Session,
     student_id: int,
@@ -73,6 +76,7 @@ def get_latest_prediction(
         .order_by(Prediction.prediction_date.desc())
         .first()
     )
+
 
 def get_student_predictions(
     db: Session,
@@ -88,6 +92,7 @@ def get_student_predictions(
         )
         .all()
     )
+
 
 def get_admin_predictions(
     db: Session,
@@ -131,9 +136,11 @@ def get_admin_predictions(
         .all()
     )
 
+
 def delete_prediction(
     db: Session,
     prediction_id: int,
+    admin_id: int,
 ):
     prediction = (
         db.query(Prediction)
@@ -149,6 +156,14 @@ def delete_prediction(
 
     db.delete(prediction)
     db.commit()
+
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="DELETE",
+        entity="Prediction",
+        entity_id=prediction_id,
+    )
 
     return {
         "message": "Prediction deleted successfully."

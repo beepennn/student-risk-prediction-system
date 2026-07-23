@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from app.database.connection import SessionLocal
+
 from app.schemas.prediction import (
     PredictionCreate,
     PredictionResponse,
@@ -28,7 +29,6 @@ from app.services.student_service import (
 )
 
 from app.services.ml_service import predict_student_risk
-from app.database.connection import SessionLocal
 from app.services.academic_service import get_latest_academic_record
 from app.services.prediction_service import save_prediction
 from app.services.recommendation_service import generate_recommendation
@@ -50,12 +50,16 @@ def get_db():
         db.close()
 
 
-@router.get("/", response_model=list[PredictionResponse])
+@router.get(
+    "/",
+    response_model=list[PredictionResponse],
+)
 def read_predictions(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
     return get_predictions(db)
+
 
 @router.get(
     "/me",
@@ -89,6 +93,7 @@ def get_my_prediction(
 
     return prediction
 
+
 @router.get("/admin")
 def admin_predictions(
     risk_level: str | None = None,
@@ -108,23 +113,49 @@ def admin_predictions(
         limit=limit,
     )
 
-@router.get("/{prediction_id}", response_model=PredictionResponse)
+
+@router.get(
+    "/{prediction_id}",
+    response_model=PredictionResponse,
+)
 def read_prediction(
     prediction_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_prediction(db, prediction_id)
+    return get_prediction(
+        db,
+        prediction_id,
+    )
 
 
-
-@router.post("/", response_model=PredictionResponse)
+@router.post(
+    "/",
+    response_model=PredictionResponse,
+)
 def add_prediction(
     prediction: PredictionCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return create_prediction(db, prediction)
+    return create_prediction(
+        db,
+        prediction,
+    )
+
+
+@router.delete("/{prediction_id}")
+def remove_prediction(
+    prediction_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return delete_prediction(
+        db=db,
+        prediction_id=prediction_id,
+        admin_id=current_user.id,
+    )
+
 
 @router.post("/generate/{student_id}")
 def generate_prediction(
@@ -134,7 +165,10 @@ def generate_prediction(
     db = SessionLocal()
 
     try:
-        academic = get_latest_academic_record(db, student_id)
+        academic = get_latest_academic_record(
+            db,
+            student_id,
+        )
 
         if academic is None:
             return {
@@ -149,17 +183,21 @@ def generate_prediction(
             "previous_gpa": academic.previous_gpa,
         }
 
-        prediction = predict_student_risk(student_features)
+        prediction = predict_student_risk(
+            student_features
+        )
 
         saved_prediction = save_prediction(
             db,
             student_id,
             prediction,
         )
+
         recommendation = generate_recommendation(
             db,
             saved_prediction,
         )
+
         generate_notification(
             db,
             student_id,

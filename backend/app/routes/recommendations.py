@@ -130,11 +130,12 @@ def get_my_recommendation(
 def add_recommendation(
     recommendation: RecommendationCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_teacher),
+    current_user: User = Depends(require_admin),
 ):
     return create_recommendation(
         db,
         recommendation,
+        current_user.id,
     )
 
 
@@ -149,6 +150,7 @@ def edit_recommendation(
         db,
         recommendation_id,
         recommendation,
+        current_user.id,
     )
 
 
@@ -161,6 +163,7 @@ def remove_recommendation(
     return delete_recommendation(
         db,
         recommendation_id,
+        current_user.id,
     )
 
 

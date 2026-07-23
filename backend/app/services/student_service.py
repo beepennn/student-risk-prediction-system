@@ -11,6 +11,7 @@ from app.models.academic_record import AcademicRecord
 from app.services.prediction_service import get_latest_prediction
 from app.services.recommendation_service import get_latest_recommendation
 from app.services.notification_service import get_student_notifications
+from app.services.audit_service import create_audit_log
 
 
 def get_students(
@@ -69,6 +70,7 @@ def get_student(db: Session, student_id: int):
 def create_student(
     db: Session,
     student: StudentCreate,
+    admin_id: int,
 ):
     db_student = Student(
         **student.model_dump()
@@ -78,57 +80,84 @@ def create_student(
     db.commit()
     db.refresh(db_student)
 
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="CREATE",
+        entity="Student",
+        entity_id=db_student.id,
+    )
+
     return db_student
 
 def update_student(
     db: Session,
     student_id: int,
     updated_data: dict,
+    admin_id: int,
 ):
-    student = (
+    db_student = (
         db.query(Student)
         .filter(Student.id == student_id)
         .first()
     )
 
-    if student is None:
+    if db_student is None:
         raise HTTPException(
             status_code=404,
             detail="Student not found.",
         )
 
     for key, value in updated_data.items():
-        setattr(student, key, value)
+        setattr(db_student, key, value)
 
     db.commit()
-    db.refresh(student)
+    db.refresh(db_student)
 
-    return student
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="UPDATE",
+        entity="Student",
+        entity_id=db_student.id,
+    )
+
+    return db_student
 
 
 def delete_student(
     db: Session,
     student_id: int,
+    admin_id: int,
 ):
-    student = (
+    db_student = (
         db.query(Student)
         .filter(Student.id == student_id)
         .first()
     )
 
-    if student is None:
+    if db_student is None:
         raise HTTPException(
             status_code=404,
             detail="Student not found.",
         )
 
-    db.delete(student)
+    deleted_id = db_student.id
+
+    db.delete(db_student)
     db.commit()
+
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="DELETE",
+        entity="Student",
+        entity_id=deleted_id,
+    )
 
     return {
         "message": "Student deleted successfully."
     }
-
 
 def get_student_by_user_id(
     db: Session,

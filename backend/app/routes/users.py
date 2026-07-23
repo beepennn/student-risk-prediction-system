@@ -52,7 +52,12 @@ def add_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    return create_user(db, user)
+    return create_user(
+        db,
+        user,
+        current_user.id,
+    )
+
 
 @router.put("/{user_id}")
 def edit_user(
@@ -65,7 +70,9 @@ def edit_user(
         db,
         user_id,
         updated_data,
+        current_user.id,
     )
+
 
 @router.patch("/{user_id}/status")
 def change_user_status(
@@ -80,6 +87,7 @@ def change_user_status(
         is_active,
     )
 
+
 @router.delete("/{user_id}")
 def remove_user(
     user_id: int,
@@ -89,4 +97,5 @@ def remove_user(
     return delete_user(
         db,
         user_id,
+        current_user.id,
     )

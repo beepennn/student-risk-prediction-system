@@ -16,10 +16,12 @@ from app.routes import notifications
 from app.routes import interventions
 from app.routes import reports
 from app.routes import auth
-from app.core.exception_handler import register_exception_handlers
-from app.middleware.logging_middleware import logging_middleware
 from app.routes import teacher
 from app.routes import admin
+from app.routes.audit_logs import router as audit_router
+
+from app.core.exception_handler import register_exception_handlers
+from app.middleware.logging_middleware import logging_middleware
 
 # Temporary during development
 Base.metadata.create_all(bind=engine)
@@ -43,6 +45,7 @@ app.include_router(reports.router)
 app.include_router(auth.router)
 app.include_router(teacher.router)
 app.include_router(admin.router)
+app.include_router(audit_router)
 
 @app.get("/")
 def home():

@@ -8,6 +8,8 @@ from app.schemas.notification import NotificationCreate
 from app.services.email_service import send_email
 from app.models.student import Student
 
+from app.services.audit_service import create_audit_log
+
 
 def get_notifications(db: Session):
     return db.query(Notification).all()
@@ -35,6 +37,7 @@ def get_notification(
 def create_notification(
     db: Session,
     notification: NotificationCreate,
+    admin_id: int,
 ):
     db_notification = Notification(
         **notification.model_dump()
@@ -43,6 +46,14 @@ def create_notification(
     db.add(db_notification)
     db.commit()
     db.refresh(db_notification)
+
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="CREATE",
+        entity="Notification",
+        entity_id=db_notification.id,
+    )
 
     return db_notification
 
@@ -160,6 +171,7 @@ def mark_notification_as_read(
         "message": "Notification marked as read."
     }
 
+
 def get_admin_notifications(
     db: Session,
     notification_type: str | None = None,
@@ -188,9 +200,11 @@ def get_admin_notifications(
         .all()
     )
 
+
 def mark_notification_as_sent(
     db: Session,
     notification_id: int,
+    admin_id: int,
 ):
     notification = (
         db.query(Notification)
@@ -212,6 +226,14 @@ def mark_notification_as_sent(
     db.commit()
     db.refresh(notification)
 
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="UPDATE",
+        entity="Notification",
+        entity_id=notification.id,
+    )
+
     return {
         "message": "Notification marked as sent."
     }
@@ -220,6 +242,7 @@ def mark_notification_as_sent(
 def delete_notification(
     db: Session,
     notification_id: int,
+    admin_id: int,
 ):
     notification = (
         db.query(Notification)
@@ -235,8 +258,18 @@ def delete_notification(
             detail="Notification not found.",
         )
 
+    deleted_id = notification.id
+
     db.delete(notification)
     db.commit()
+
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="DELETE",
+        entity="Notification",
+        entity_id=deleted_id,
+    )
 
     return {
         "message": "Notification deleted successfully."

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.intervention import Intervention
 from app.schemas.intervention import InterventionCreate
 
+from app.services.audit_service import create_audit_log
 
 def get_interventions(db: Session):
     return db.query(Intervention).all()
@@ -31,6 +32,7 @@ def get_intervention(
 def create_intervention(
     db: Session,
     intervention: InterventionCreate,
+    admin_id: int,
 ):
     db_intervention = Intervention(
         **intervention.model_dump()
@@ -39,6 +41,14 @@ def create_intervention(
     db.add(db_intervention)
     db.commit()
     db.refresh(db_intervention)
+
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="CREATE",
+        entity="Intervention",
+        entity_id=db_intervention.id,
+    )
 
     return db_intervention
 
@@ -77,3 +87,74 @@ def create_teacher_intervention(
     db.refresh(intervention)
 
     return intervention
+
+def update_intervention(
+    db: Session,
+    intervention_id: int,
+    intervention: InterventionCreate,
+    admin_id: int,
+):
+    db_intervention = (
+        db.query(Intervention)
+        .filter(
+            Intervention.id == intervention_id
+        )
+        .first()
+    )
+
+    if db_intervention is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Intervention not found.",
+        )
+
+    for key, value in intervention.model_dump().items():
+        setattr(db_intervention, key, value)
+
+    db.commit()
+    db.refresh(db_intervention)
+
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="UPDATE",
+        entity="Intervention",
+        entity_id=db_intervention.id,
+    )
+
+    return db_intervention
+
+def delete_intervention(
+    db: Session,
+    intervention_id: int,
+    admin_id: int,
+):
+    intervention = (
+        db.query(Intervention)
+        .filter(
+            Intervention.id == intervention_id
+        )
+        .first()
+    )
+
+    if intervention is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Intervention not found.",
+        )
+
+    db.delete(intervention)
+    db.commit()
+
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="DELETE",
+        entity="Intervention",
+        entity_id=intervention_id,
+    )
+
+    return {
+        "message": "Intervention deleted successfully."
+    }
+

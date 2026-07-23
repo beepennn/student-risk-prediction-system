@@ -6,3 +6,4 @@ from .shap_explanation import SHAPExplanation
 from .recommendation import Recommendation
 from .notification import Notification
 from .intervention import Intervention
+from .audit_log import AuditLog

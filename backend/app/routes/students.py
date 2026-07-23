@@ -9,7 +9,10 @@ from app.core.dependencies import (
 )
 
 from app.models.user import User
-from app.schemas.student import StudentCreate, StudentResponse
+from app.schemas.student import (
+    StudentCreate,
+    StudentResponse,
+)
 
 from app.services.student_service import (
     get_students,
@@ -82,6 +85,7 @@ def get_my_profile(
 
     return student
 
+
 @router.get("/me/dashboard")
 def get_my_dashboard(
     current_user: User = Depends(get_current_user),
@@ -91,6 +95,7 @@ def get_my_dashboard(
         db,
         current_user.id,
     )
+
 
 @router.get("/me/analytics")
 def get_my_analytics(
@@ -102,13 +107,17 @@ def get_my_analytics(
         current_user.id,
     )
 
+
 @router.get("/{student_id}", response_model=StudentResponse)
 def read_student(
     student_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_student(db, student_id)
+    return get_student(
+        db,
+        student_id,
+    )
 
 
 @router.post("/", response_model=StudentResponse)
@@ -117,7 +126,12 @@ def add_student(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    return create_student(db, student)
+    return create_student(
+        db=db,
+        student=student,
+        admin_id=current_user.id,
+    )
+
 
 @router.put("/{student_id}")
 def edit_student(
@@ -127,10 +141,12 @@ def edit_student(
     current_user: User = Depends(require_admin),
 ):
     return update_student(
-        db,
-        student_id,
-        updated_data,
+        db=db,
+        student_id=student_id,
+        updated_data=updated_data,
+        admin_id=current_user.id,
     )
+
 
 @router.delete("/{student_id}")
 def remove_student(
@@ -139,8 +155,9 @@ def remove_student(
     current_user: User = Depends(require_admin),
 ):
     return delete_student(
-        db,
-        student_id,
+        db=db,
+        student_id=student_id,
+        admin_id=current_user.id,
     )
 
 
@@ -165,6 +182,7 @@ def get_my_predictions(
         student.id,
     )
 
+
 @router.get("/me/recommendations")
 def get_my_recommendations(
     current_user: User = Depends(get_current_user),
@@ -180,7 +198,6 @@ def get_my_recommendations(
             status_code=404,
             detail="Student profile not found.",
         )
-
     return get_student_recommendations(
         db,
         student.id,

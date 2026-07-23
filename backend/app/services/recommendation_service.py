@@ -6,6 +6,8 @@ from app.schemas.recommendation import RecommendationCreate
 from app.models.prediction import Prediction
 from app.models.student import Student
 
+from app.services.audit_service import create_audit_log
+
 
 def get_recommendations(db: Session):
     return db.query(Recommendation).all()
@@ -33,6 +35,7 @@ def get_recommendation(
 def create_recommendation(
     db: Session,
     recommendation: RecommendationCreate,
+    admin_id: int,
 ):
     db_recommendation = Recommendation(
         **recommendation.model_dump()
@@ -41,6 +44,14 @@ def create_recommendation(
     db.add(db_recommendation)
     db.commit()
     db.refresh(db_recommendation)
+
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="CREATE",
+        entity="Recommendation",
+        entity_id=db_recommendation.id,
+    )
 
     return db_recommendation
 
@@ -83,6 +94,7 @@ def generate_recommendation(
 
     return recommendation
 
+
 def get_latest_recommendation(
     db: Session,
     prediction_id: int,
@@ -97,6 +109,7 @@ def get_latest_recommendation(
         )
         .first()
     )
+
 
 def get_student_recommendations(
     db: Session,
@@ -113,6 +126,7 @@ def get_student_recommendations(
         )
         .all()
     )
+
 
 def get_admin_recommendations(
     db: Session,
@@ -159,6 +173,7 @@ def update_recommendation(
     db: Session,
     recommendation_id: int,
     recommendation: RecommendationCreate,
+    admin_id: int,
 ):
     db_recommendation = (
         db.query(Recommendation)
@@ -180,12 +195,21 @@ def update_recommendation(
     db.commit()
     db.refresh(db_recommendation)
 
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="UPDATE",
+        entity="Recommendation",
+        entity_id=db_recommendation.id,
+    )
+
     return db_recommendation
 
 
 def delete_recommendation(
     db: Session,
     recommendation_id: int,
+    admin_id: int,
 ):
     recommendation = (
         db.query(Recommendation)
@@ -201,8 +225,18 @@ def delete_recommendation(
             detail="Recommendation not found.",
         )
 
+    recommendation_id_deleted = recommendation.id
+
     db.delete(recommendation)
     db.commit()
+
+    create_audit_log(
+        db=db,
+        user_id=admin_id,
+        action="DELETE",
+        entity="Recommendation",
+        entity_id=recommendation_id_deleted,
+    )
 
     return {
         "message": "Recommendation deleted successfully."
