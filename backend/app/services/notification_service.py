@@ -58,6 +58,7 @@ def generate_notification(
         message=message,
         notification_type="in_app",
         is_sent=False,
+        is_read=False,
     )
 
     db.add(notification)
@@ -66,21 +67,48 @@ def generate_notification(
 
     return notification
 
+
 def get_student_notifications(
     db: Session,
     student_id: int,
 ):
-    notifications = (
+    return (
         db.query(Notification)
-        .filter(Notification.student_id == student_id)
-        .order_by(Notification.id.desc())
+        .filter(
+            Notification.student_id == student_id
+        )
+        .order_by(
+            Notification.id.desc()
+        )
         .all()
     )
 
-    if not notifications:
+
+def mark_notification_as_read(
+    db: Session,
+    notification_id: int,
+    student_id: int,
+):
+    notification = (
+        db.query(Notification)
+        .filter(
+            Notification.id == notification_id,
+            Notification.student_id == student_id,
+        )
+        .first()
+    )
+
+    if notification is None:
         raise HTTPException(
             status_code=404,
-            detail="Notifications not found.",
+            detail="Notification not found.",
         )
 
-    return notifications
+    notification.is_read = True
+
+    db.commit()
+    db.refresh(notification)
+
+    return {
+        "message": "Notification marked as read."
+    }

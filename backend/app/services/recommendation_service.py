@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.recommendation import Recommendation
 from app.schemas.recommendation import RecommendationCreate
+from app.models.prediction import Prediction
 
 
 def get_recommendations(db: Session):
@@ -94,4 +95,20 @@ def get_latest_recommendation(
             Recommendation.id.desc()
         )
         .first()
+    )
+
+def get_student_recommendations(
+    db: Session,
+    student_id: int,
+):
+    return (
+        db.query(Recommendation)
+        .join(Prediction)
+        .filter(
+            Prediction.student_id == student_id
+        )
+        .order_by(
+            Recommendation.id.desc()
+        )
+        .all()
     )

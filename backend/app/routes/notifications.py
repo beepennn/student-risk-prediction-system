@@ -2,15 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.connection import SessionLocal
+
 from app.schemas.notification import (
     NotificationCreate,
     NotificationResponse,
 )
+
 from app.services.notification_service import (
     get_notifications,
     get_notification,
     create_notification,
     get_student_notifications,
+    mark_notification_as_read,
 )
 
 from app.services.student_service import (
@@ -38,12 +41,16 @@ def get_db():
         db.close()
 
 
-@router.get("/", response_model=list[NotificationResponse])
+@router.get(
+    "/",
+    response_model=list[NotificationResponse],
+)
 def read_notifications(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
     return get_notifications(db)
+
 
 @router.get(
     "/me",
@@ -69,19 +76,56 @@ def get_my_notifications(
         student.id,
     )
 
-@router.get("/{notification_id}", response_model=NotificationResponse)
+
+@router.patch("/{notification_id}/read")
+def read_my_notification(
+    notification_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    student = get_student_by_user_id(
+        db,
+        current_user.id,
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student profile not found.",
+        )
+
+    return mark_notification_as_read(
+        db,
+        notification_id,
+        student.id,
+    )
+
+
+@router.get(
+    "/{notification_id}",
+    response_model=NotificationResponse,
+)
 def read_notification(
     notification_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_notification(db, notification_id)
+    return get_notification(
+        db,
+        notification_id,
+    )
 
 
-@router.post("/", response_model=NotificationResponse)
+@router.post(
+    "/",
+    response_model=NotificationResponse,
+)
 def add_notification(
     notification: NotificationCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return create_notification(db, notification)
+    return create_notification(
+        db,
+        notification,
+    )

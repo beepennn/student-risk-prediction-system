@@ -72,3 +72,18 @@ def get_latest_prediction(
         .order_by(Prediction.prediction_date.desc())
         .first()
     )
+
+def get_student_predictions(
+    db: Session,
+    student_id: int,
+):
+    return (
+        db.query(Prediction)
+        .filter(
+            Prediction.student_id == student_id
+        )
+        .order_by(
+            Prediction.id.desc()
+        )
+        .all()
+    )

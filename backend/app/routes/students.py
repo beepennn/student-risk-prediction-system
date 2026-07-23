@@ -7,13 +7,25 @@ from app.core.dependencies import (
     require_admin,
     get_current_user,
 )
+
 from app.models.user import User
 from app.schemas.student import StudentCreate, StudentResponse
+
 from app.services.student_service import (
     get_students,
     get_student,
     create_student,
     get_student_by_user_id,
+    get_student_dashboard,
+    get_student_analytics,
+)
+
+from app.services.prediction_service import (
+    get_student_predictions,
+)
+
+from app.services.recommendation_service import (
+    get_student_recommendations,
 )
 
 router = APIRouter(
@@ -68,6 +80,25 @@ def get_my_profile(
 
     return student
 
+@router.get("/me/dashboard")
+def get_my_dashboard(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return get_student_dashboard(
+        db,
+        current_user.id,
+    )
+
+@router.get("/me/analytics")
+def get_my_analytics(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return get_student_analytics(
+        db,
+        current_user.id,
+    )
 
 @router.get("/{student_id}", response_model=StudentResponse)
 def read_student(
@@ -85,3 +116,45 @@ def add_student(
     current_user: User = Depends(require_admin),
 ):
     return create_student(db, student)
+
+@router.get("/me/predictions")
+def get_my_predictions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    student = get_student_by_user_id(
+        db,
+        current_user.id,
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student profile not found.",
+        )
+
+    return get_student_predictions(
+        db,
+        student.id,
+    )
+
+@router.get("/me/recommendations")
+def get_my_recommendations(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    student = get_student_by_user_id(
+        db,
+        current_user.id,
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student profile not found.",
+        )
+
+    return get_student_recommendations(
+        db,
+        student.id,
+    )
