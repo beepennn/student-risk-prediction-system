@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.recommendation import Recommendation
 from app.schemas.recommendation import RecommendationCreate
 from app.models.prediction import Prediction
+from app.models.student import Student
 
 
 def get_recommendations(db: Session):
@@ -112,3 +113,97 @@ def get_student_recommendations(
         )
         .all()
     )
+
+def get_admin_recommendations(
+    db: Session,
+    priority: str | None = None,
+    semester: int | None = None,
+    department: str | None = None,
+    skip: int = 0,
+    limit: int = 20,
+):
+    query = (
+        db.query(Recommendation)
+        .join(Prediction)
+        .join(Student)
+    )
+
+    if priority:
+        query = query.filter(
+            Recommendation.priority == priority
+        )
+
+    if semester is not None:
+        query = query.filter(
+            Student.semester == semester
+        )
+
+    if department:
+        query = query.filter(
+            Student.department.ilike(
+                f"%{department}%"
+            )
+        )
+
+    return (
+        query.order_by(
+            Recommendation.id.desc()
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
+def update_recommendation(
+    db: Session,
+    recommendation_id: int,
+    recommendation: RecommendationCreate,
+):
+    db_recommendation = (
+        db.query(Recommendation)
+        .filter(
+            Recommendation.id == recommendation_id
+        )
+        .first()
+    )
+
+    if db_recommendation is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Recommendation not found.",
+        )
+
+    for key, value in recommendation.model_dump().items():
+        setattr(db_recommendation, key, value)
+
+    db.commit()
+    db.refresh(db_recommendation)
+
+    return db_recommendation
+
+
+def delete_recommendation(
+    db: Session,
+    recommendation_id: int,
+):
+    recommendation = (
+        db.query(Recommendation)
+        .filter(
+            Recommendation.id == recommendation_id
+        )
+        .first()
+    )
+
+    if recommendation is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Recommendation not found.",
+        )
+
+    db.delete(recommendation)
+    db.commit()
+
+    return {
+        "message": "Recommendation deleted successfully."
+    }

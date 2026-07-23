@@ -2,15 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.connection import SessionLocal
+
 from app.schemas.recommendation import (
     RecommendationCreate,
     RecommendationResponse,
 )
+
 from app.services.recommendation_service import (
     get_recommendations,
     get_recommendation,
     create_recommendation,
     get_latest_recommendation,
+    get_admin_recommendations,
+    update_recommendation,
+    delete_recommendation,
 )
 
 from app.services.student_service import (
@@ -23,6 +28,7 @@ from app.services.prediction_service import (
 
 from app.core.dependencies import (
     require_teacher,
+    require_admin,
     get_current_user,
 )
 
@@ -42,12 +48,36 @@ def get_db():
         db.close()
 
 
-@router.get("/", response_model=list[RecommendationResponse])
+@router.get(
+    "/",
+    response_model=list[RecommendationResponse],
+)
 def read_recommendations(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
     return get_recommendations(db)
+
+
+@router.get("/admin")
+def admin_recommendations(
+    priority: str | None = None,
+    semester: int | None = None,
+    department: str | None = None,
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return get_admin_recommendations(
+        db=db,
+        priority=priority,
+        semester=semester,
+        department=department,
+        skip=skip,
+        limit=limit,
+    )
+
 
 @router.get(
     "/me",
@@ -84,21 +114,66 @@ def get_my_recommendation(
         prediction.id,
     )
 
+    if recommendation is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Recommendation not found.",
+        )
+
     return recommendation
 
-@router.get("/{recommendation_id}", response_model=RecommendationResponse)
-def read_recommendation(
-    recommendation_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_teacher),
-):
-    return get_recommendation(db, recommendation_id)
 
-
-@router.post("/", response_model=RecommendationResponse)
+@router.post(
+    "/",
+    response_model=RecommendationResponse,
+)
 def add_recommendation(
     recommendation: RecommendationCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return create_recommendation(db, recommendation)
+    return create_recommendation(
+        db,
+        recommendation,
+    )
+
+
+@router.put("/{recommendation_id}")
+def edit_recommendation(
+    recommendation_id: int,
+    recommendation: RecommendationCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return update_recommendation(
+        db,
+        recommendation_id,
+        recommendation,
+    )
+
+
+@router.delete("/{recommendation_id}")
+def remove_recommendation(
+    recommendation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return delete_recommendation(
+        db,
+        recommendation_id,
+    )
+
+
+@router.get(
+    "/{recommendation_id}",
+    response_model=RecommendationResponse,
+)
+def read_recommendation(
+    recommendation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
+):
+    return get_recommendation(
+        db,
+        recommendation_id,
+    )

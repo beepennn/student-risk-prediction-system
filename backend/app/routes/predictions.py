@@ -13,10 +13,13 @@ from app.services.prediction_service import (
     get_prediction,
     create_prediction,
     get_latest_prediction,
+    get_admin_predictions,
+    delete_prediction,
 )
 
 from app.core.dependencies import (
     require_teacher,
+    require_admin,
     get_current_user,
 )
 
@@ -86,6 +89,25 @@ def get_my_prediction(
 
     return prediction
 
+@router.get("/admin")
+def admin_predictions(
+    risk_level: str | None = None,
+    semester: int | None = None,
+    department: str | None = None,
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return get_admin_predictions(
+        db=db,
+        risk_level=risk_level,
+        semester=semester,
+        department=department,
+        skip=skip,
+        limit=limit,
+    )
+
 @router.get("/{prediction_id}", response_model=PredictionResponse)
 def read_prediction(
     prediction_id: int,
@@ -93,6 +115,7 @@ def read_prediction(
     current_user: User = Depends(require_teacher),
 ):
     return get_prediction(db, prediction_id)
+
 
 
 @router.post("/", response_model=PredictionResponse)

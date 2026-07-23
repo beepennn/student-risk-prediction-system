@@ -1,8 +1,12 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 
 from app.models.notification import Notification
 from app.schemas.notification import NotificationCreate
+
+from app.services.email_service import send_email
+from app.models.student import Student
 
 
 def get_notifications(db: Session):
@@ -58,12 +62,55 @@ def generate_notification(
         message=message,
         notification_type="in_app",
         is_sent=False,
-        is_read=False,
     )
 
     db.add(notification)
     db.commit()
     db.refresh(notification)
+
+    student = (
+        db.query(Student)
+        .filter(Student.id == student_id)
+        .first()
+    )
+
+    if student is not None:
+
+        student_email = student.user.email
+
+        parent_email = student.parent_email
+
+        html = f"""
+        <h2>Student Risk Prediction</h2>
+
+        <p><strong>Recommendation:</strong></p>
+
+        <p>{recommendation.title}</p>
+
+        <p>{recommendation.description}</p>
+
+        <p><strong>Priority:</strong> {recommendation.priority}</p>
+        """
+
+        try:
+            send_email(
+                student_email,
+                "Student Risk Alert",
+                html,
+            )
+
+            if parent_email:
+                send_email(
+                    parent_email,
+                    "Student Risk Alert",
+                    html,
+                )
+
+            notification.is_sent = True
+            db.commit()
+
+        except Exception as e:
+            print("Email Error:", e)
 
     return notification
 
@@ -111,4 +158,86 @@ def mark_notification_as_read(
 
     return {
         "message": "Notification marked as read."
+    }
+
+def get_admin_notifications(
+    db: Session,
+    notification_type: str | None = None,
+    is_sent: bool | None = None,
+    skip: int = 0,
+    limit: int = 20,
+):
+    query = db.query(Notification)
+
+    if notification_type:
+        query = query.filter(
+            Notification.notification_type == notification_type
+        )
+
+    if is_sent is not None:
+        query = query.filter(
+            Notification.is_sent == is_sent
+        )
+
+    return (
+        query.order_by(
+            Notification.created_at.desc()
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+def mark_notification_as_sent(
+    db: Session,
+    notification_id: int,
+):
+    notification = (
+        db.query(Notification)
+        .filter(
+            Notification.id == notification_id
+        )
+        .first()
+    )
+
+    if notification is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Notification not found.",
+        )
+
+    notification.is_sent = True
+    notification.sent_at = func.now()
+
+    db.commit()
+    db.refresh(notification)
+
+    return {
+        "message": "Notification marked as sent."
+    }
+
+
+def delete_notification(
+    db: Session,
+    notification_id: int,
+):
+    notification = (
+        db.query(Notification)
+        .filter(
+            Notification.id == notification_id
+        )
+        .first()
+    )
+
+    if notification is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Notification not found.",
+        )
+
+    db.delete(notification)
+    db.commit()
+
+    return {
+        "message": "Notification deleted successfully."
     }

@@ -14,6 +14,9 @@ from app.services.notification_service import (
     create_notification,
     get_student_notifications,
     mark_notification_as_read,
+    get_admin_notifications,
+    mark_notification_as_sent,
+    delete_notification,
 )
 
 from app.services.student_service import (
@@ -22,6 +25,7 @@ from app.services.student_service import (
 
 from app.core.dependencies import (
     require_teacher,
+    require_admin,
     get_current_user,
 )
 
@@ -52,6 +56,30 @@ def read_notifications(
     return get_notifications(db)
 
 
+# -------------------------------
+# ADMIN NOTIFICATION LIST
+# -------------------------------
+@router.get("/admin")
+def admin_notifications(
+    notification_type: str | None = None,
+    is_sent: bool | None = None,
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return get_admin_notifications(
+        db=db,
+        notification_type=notification_type,
+        is_sent=is_sent,
+        skip=skip,
+        limit=limit,
+    )
+
+
+# -------------------------------
+# STUDENT NOTIFICATIONS
+# -------------------------------
 @router.get(
     "/me",
     response_model=list[NotificationResponse],
@@ -101,6 +129,36 @@ def read_my_notification(
     )
 
 
+# -------------------------------
+# ADMIN ACTIONS
+# -------------------------------
+@router.patch("/{notification_id}/sent")
+def send_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return mark_notification_as_sent(
+        db,
+        notification_id,
+    )
+
+
+@router.delete("/{notification_id}")
+def remove_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return delete_notification(
+        db,
+        notification_id,
+    )
+
+
+# -------------------------------
+# SINGLE NOTIFICATION
+# -------------------------------
 @router.get(
     "/{notification_id}",
     response_model=NotificationResponse,
