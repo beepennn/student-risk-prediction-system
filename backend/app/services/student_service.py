@@ -66,7 +66,6 @@ def get_student(db: Session, student_id: int):
 
     return student
 
-
 def create_student(
     db: Session,
     student: StudentCreate,
@@ -80,6 +79,55 @@ def create_student(
     db.refresh(db_student)
 
     return db_student
+
+def update_student(
+    db: Session,
+    student_id: int,
+    updated_data: dict,
+):
+    student = (
+        db.query(Student)
+        .filter(Student.id == student_id)
+        .first()
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student not found.",
+        )
+
+    for key, value in updated_data.items():
+        setattr(student, key, value)
+
+    db.commit()
+    db.refresh(student)
+
+    return student
+
+
+def delete_student(
+    db: Session,
+    student_id: int,
+):
+    student = (
+        db.query(Student)
+        .filter(Student.id == student_id)
+        .first()
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student not found.",
+        )
+
+    db.delete(student)
+    db.commit()
+
+    return {
+        "message": "Student deleted successfully."
+    }
 
 
 def get_student_by_user_id(

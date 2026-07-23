@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 
 from app.database.connection import SessionLocal
@@ -18,6 +18,8 @@ from app.services.student_service import (
     get_student_by_user_id,
     get_student_dashboard,
     get_student_analytics,
+    update_student,
+    delete_student,
 )
 
 from app.services.prediction_service import (
@@ -116,6 +118,31 @@ def add_student(
     current_user: User = Depends(require_admin),
 ):
     return create_student(db, student)
+
+@router.put("/{student_id}")
+def edit_student(
+    student_id: int,
+    updated_data: dict = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return update_student(
+        db,
+        student_id,
+        updated_data,
+    )
+
+@router.delete("/{student_id}")
+def remove_student(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return delete_student(
+        db,
+        student_id,
+    )
+
 
 @router.get("/me/predictions")
 def get_my_predictions(
