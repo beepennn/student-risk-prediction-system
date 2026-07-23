@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.academic_record import AcademicRecord
@@ -8,19 +9,32 @@ def get_academic_records(db: Session):
     return db.query(AcademicRecord).all()
 
 
-def get_academic_record(db: Session, record_id: int):
-    return (
+def get_academic_record(
+    db: Session,
+    record_id: int,
+):
+    record = (
         db.query(AcademicRecord)
         .filter(AcademicRecord.id == record_id)
         .first()
     )
+
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Academic record not found.",
+        )
+
+    return record
 
 
 def create_academic_record(
     db: Session,
     academic_record: AcademicRecordCreate,
 ):
-    db_record = AcademicRecord(**academic_record.model_dump())
+    db_record = AcademicRecord(
+        **academic_record.model_dump()
+    )
 
     db.add(db_record)
     db.commit()
@@ -28,13 +42,22 @@ def create_academic_record(
 
     return db_record
 
-from app.models.academic_record import AcademicRecord
 
-
-def get_latest_academic_record(db: Session, student_id: int):
-    return (
+def get_latest_academic_record(
+    db: Session,
+    student_id: int,
+):
+    record = (
         db.query(AcademicRecord)
         .filter(AcademicRecord.student_id == student_id)
         .order_by(AcademicRecord.created_at.desc())
         .first()
     )
+
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Academic record not found.",
+        )
+
+    return record
