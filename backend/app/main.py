@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.database.connection import engine
 from app.database.base import Base
@@ -18,16 +19,28 @@ from app.routes import reports
 from app.routes import auth
 from app.routes import teacher
 from app.routes import admin
+from app.routes import analytics
 from app.routes.audit_logs import router as audit_router
 
 from app.core.exception_handler import register_exception_handlers
 from app.middleware.logging_middleware import logging_middleware
+
 
 # Temporary during development
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Student Risk Prediction API"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 register_exception_handlers(app)
@@ -45,6 +58,7 @@ app.include_router(reports.router)
 app.include_router(auth.router)
 app.include_router(teacher.router)
 app.include_router(admin.router)
+app.include_router(analytics.router)
 app.include_router(audit_router)
 
 @app.get("/")
