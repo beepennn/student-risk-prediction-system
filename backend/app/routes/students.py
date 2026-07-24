@@ -14,6 +14,8 @@ from app.schemas.student import (
     StudentResponse,
 )
 
+from app.schemas.dashboard import StudentDashboardResponse
+
 from app.services.student_service import (
     get_students,
     get_student,
@@ -86,7 +88,10 @@ def get_my_profile(
     return student
 
 
-@router.get("/me/dashboard")
+@router.get(
+    "/me/dashboard",
+    response_model=StudentDashboardResponse,
+)
 def get_my_dashboard(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

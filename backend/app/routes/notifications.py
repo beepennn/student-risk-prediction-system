@@ -17,6 +17,7 @@ from app.services.notification_service import (
     get_admin_notifications,
     mark_notification_as_sent,
     delete_notification,
+    mark_all_notifications_as_read,
 )
 
 from app.services.student_service import (
@@ -104,6 +105,26 @@ def get_my_notifications(
         student.id,
     )
 
+@router.patch("/read-all")
+def read_all_notifications(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    student = get_student_by_user_id(
+        db,
+        current_user.id,
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student profile not found.",
+        )
+
+    return mark_all_notifications_as_read(
+        db,
+        student.id,
+    )
 
 @router.patch("/{notification_id}/read")
 def read_my_notification(

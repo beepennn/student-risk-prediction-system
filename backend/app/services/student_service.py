@@ -184,7 +184,7 @@ def get_student_dashboard(
             detail="Student profile not found.",
         )
 
-    academic_records = (
+    latest_record = (
         db.query(AcademicRecord)
         .filter(
             AcademicRecord.student_id == student.id
@@ -192,7 +192,7 @@ def get_student_dashboard(
         .order_by(
             AcademicRecord.semester.desc()
         )
-        .all()
+        .first()
     )
 
     latest_prediction = get_latest_prediction(
@@ -202,12 +202,10 @@ def get_student_dashboard(
 
     latest_recommendation = None
 
-    if latest_prediction is not None:
-        latest_recommendation = (
-            get_latest_recommendation(
-                db,
-                latest_prediction.id,
-            )
+    if latest_prediction:
+        latest_recommendation = get_latest_recommendation(
+            db,
+            latest_prediction.id,
         )
 
     notifications = get_student_notifications(
@@ -215,12 +213,54 @@ def get_student_dashboard(
         student.id,
     )
 
+    unread_notifications = sum(
+        1
+        for notification in notifications
+        if not notification.is_read
+    )
+
     return {
-        "student": student,
-        "academic_records": academic_records,
-        "latest_prediction": latest_prediction,
-        "latest_recommendation": latest_recommendation,
-        "notifications": notifications,
+        "student": {
+            "id": student.id,
+            "full_name": ( student.user.full_name if student.user else None ),
+            "roll_number": student.roll_number,
+            "department": student.department,
+            "semester": student.semester,
+        },
+
+        "latest_prediction": (
+            {
+                "risk_level": latest_prediction.risk_level,
+                "prediction_date": latest_prediction.prediction_date.isoformat(),
+                "low_probability": latest_prediction.low_probability,
+                "medium_probability": latest_prediction.medium_probability,
+                "high_probability": latest_prediction.high_probability,
+            }
+            if latest_prediction
+            else None
+        ),
+
+        "latest_recommendation": (
+            {
+                "priority": latest_recommendation.priority,
+                "recommendation_text": latest_recommendation.recommendation_text,
+            }
+            if latest_recommendation
+            else None
+        ),
+
+        "academic_summary": {
+            "attendance": latest_record.attendance if latest_record else None,
+            "internal_marks": latest_record.internal_marks if latest_record else None,
+            "assignment_score": latest_record.assignment_score if latest_record else None,
+            "quiz_score": latest_record.quiz_score if latest_record else None,
+            "previous_gpa": latest_record.previous_gpa if latest_record else None,
+        },
+
+        "notifications": {
+            "total": len(notifications),
+            "unread": unread_notifications,
+        },
     }
 
 def get_student_analytics(
@@ -238,15 +278,21 @@ def get_student_analytics(
             detail="Student profile not found.",
         )
 
-    latest_record = (
+    academic_history = (
         db.query(AcademicRecord)
         .filter(
             AcademicRecord.student_id == student.id
         )
         .order_by(
-            AcademicRecord.semester.desc()
+            AcademicRecord.semester.asc()
         )
-        .first()
+        .all()
+    )
+
+    latest_record = (
+        academic_history[-1]
+        if academic_history
+        else None
     )
 
     latest_prediction = get_latest_prediction(
@@ -270,16 +316,54 @@ def get_student_analytics(
     )
 
     return {
-        "attendance": latest_record.attendance if latest_record else None,
-        "internal_marks": latest_record.internal_marks if latest_record else None,
-        "assignment_score": latest_record.assignment_score if latest_record else None,
-        "quiz_score": latest_record.quiz_score if latest_record else None,
-        "previous_gpa": latest_record.previous_gpa if latest_record else None,
-        "risk_level": latest_prediction.risk_level if latest_prediction else None,
-        "recommendation_priority": (
-            latest_recommendation.priority
-            if latest_recommendation
-            else None
-        ),
-        "total_notifications": len(notifications),
+        "latest": {
+            "attendance": (
+                latest_record.attendance
+                if latest_record
+                else None
+            ),
+            "internal_marks": (
+                latest_record.internal_marks
+                if latest_record
+                else None
+            ),
+            "assignment_score": (
+                latest_record.assignment_score
+                if latest_record
+                else None
+            ),
+            "quiz_score": (
+                latest_record.quiz_score
+                if latest_record
+                else None
+            ),
+            "previous_gpa": (
+                latest_record.previous_gpa
+                if latest_record
+                else None
+            ),
+            "risk_level": (
+                latest_prediction.risk_level
+                if latest_prediction
+                else None
+            ),
+            "recommendation_priority": (
+                latest_recommendation.priority
+                if latest_recommendation
+                else None
+            ),
+            "total_notifications": len(notifications),
+        },
+
+        "history": [
+            {
+                "semester": record.semester,
+                "attendance": record.attendance,
+                "internal_marks": record.internal_marks,
+                "assignment_score": record.assignment_score,
+                "quiz_score": record.quiz_score,
+                "previous_gpa": record.previous_gpa,
+            }
+            for record in academic_history
+        ],
     }
