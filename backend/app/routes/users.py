@@ -45,7 +45,6 @@ def read_user(
 ):
     return get_user(db, user_id)
 
-
 @router.post("/", response_model=UserResponse)
 def add_user(
     user: UserCreate,

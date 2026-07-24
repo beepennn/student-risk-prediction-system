@@ -8,6 +8,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app.services.auth_service import login_user
 from app.core.dependencies import get_current_user
 from app.models.user import User
+from app.auth.roles import require_admin
 
 router = APIRouter(
     prefix="/auth",
@@ -45,6 +46,7 @@ def login(
 
     return token
 
+
 @router.get("/me")
 def current_user(
     user: User = Depends(get_current_user),
@@ -52,6 +54,17 @@ def current_user(
     return {
         "id": user.id,
         "full_name": user.full_name,
+        "email": user.email,
+        "role": user.role,
+    }
+
+
+@router.get("/admin-test")
+def admin_test(
+    user: User = Depends(require_admin),
+):
+    return {
+        "message": "Admin access granted",
         "email": user.email,
         "role": user.role,
     }
