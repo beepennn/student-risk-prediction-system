@@ -1,24 +1,24 @@
 import Card from "../../../components/ui/Card";
-import LoginForm from "../components/LoginForm";
+import ResetPasswordForm from "../components/ResetPasswordForm";
 
-function LoginPage() {
+function ResetPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100">
       <Card>
         <div className="w-96">
           <h1 className="mb-2 text-center text-3xl font-bold text-blue-600">
-            Student Risk Prediction System
+            Reset Password
           </h1>
 
           <p className="mb-6 text-center text-gray-500">
-            Sign in to continue
+            Enter your new password below.
           </p>
 
-          <LoginForm />
+          <ResetPasswordForm />
         </div>
       </Card>
     </div>
   );
 }
 
-export default LoginPage;
+export default ResetPasswordPage;
