@@ -1,0 +1,5 @@
+PredictionDateTime,PredictedRisk,Confidence,ConfidencePercentage,AttendanceRate,StudyHoursPerWeek,PreviousGrade,ExtracurricularActivities,Study Hours
+2026-07-24 16:04:58,Low Risk,0.4345,43.45,85.0,15.0,78.0,1.0,4.8
+2026-07-24 16:12:23,Low Risk,0.4345,43.45,85.0,15.0,78.0,1.0,4.8
+2026-07-24 16:13:21,Low Risk,0.4345,43.45,85.0,15.0,78.0,1.0,4.8
+2026-07-24 21:10:25,Low Risk,0.4345,43.45,85.0,15.0,78.0,1.0,4.8

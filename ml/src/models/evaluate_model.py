@@ -4,12 +4,13 @@ import joblib
 from pathlib import Path
 
 from sklearn.model_selection import train_test_split
+
 from sklearn.metrics import (
     accuracy_score,
+    balanced_accuracy_score,
     precision_score,
     recall_score,
     f1_score,
-    balanced_accuracy_score,
     classification_report,
     confusion_matrix
 )
@@ -43,7 +44,7 @@ y = df["AcademicRisk"]
 
 
 # ============================================================
-# 3. RECREATE SAME TRAIN-TEST SPLIT
+# 3. SAME TRAIN-TEST SPLIT USED DURING TRAINING
 # ============================================================
 
 X_train, X_test, y_train, y_test = train_test_split(
@@ -62,9 +63,7 @@ print(
     len(X_test)
 )
 
-print(
-    "\nTesting target distribution:"
-)
+print("\nTesting target distribution:")
 
 print(
     y_test.value_counts()
@@ -72,231 +71,270 @@ print(
 
 
 # ============================================================
-# 4. LOAD SAVED RANDOM FOREST MODEL
+# 4. MODEL PATHS
 # ============================================================
 
-model_path = Path(
+baseline_path = Path(
     "models/trained/random_forest_baseline.pkl"
 )
 
-model = joblib.load(
-    model_path
+tuned_path = Path(
+    "models/trained/random_forest_tuned.pkl"
+)
+
+
+# ============================================================
+# 5. LOAD MODELS
+# ============================================================
+
+print("\n========== MODEL LOADING ==========")
+
+baseline_model = joblib.load(
+    baseline_path
 )
 
 print(
-    "\n========== MODEL LOADING =========="
+    "Baseline Random Forest loaded successfully."
+)
+
+
+tuned_model = joblib.load(
+    tuned_path
 )
 
 print(
-    "Baseline Random Forest model loaded successfully."
+    "Tuned Random Forest loaded successfully."
 )
 
 
 # ============================================================
-# 5. MAKE PREDICTIONS
+# 6. DEFINE EVALUATION FUNCTION
 # ============================================================
 
-y_pred = model.predict(
-    X_test
-)
+def evaluate_model(
+    model,
+    model_name
+):
 
+    print(
+        f"\n\n{'=' * 60}"
+    )
 
-# ============================================================
-# 6. ACCURACY
-# ============================================================
+    print(
+        f"{model_name}"
+    )
 
-accuracy = accuracy_score(
-    y_test,
-    y_pred
-)
+    print(
+        f"{'=' * 60}"
+    )
 
+    # Make predictions
+    y_pred = model.predict(
+        X_test
+    )
 
-print(
-    "\n========== ACCURACY =========="
-)
+    # Calculate metrics
+    accuracy = accuracy_score(
+        y_test,
+        y_pred
+    )
 
-print(
-    f"Accuracy: {accuracy:.4f}"
-)
+    balanced_accuracy = balanced_accuracy_score(
+        y_test,
+        y_pred
+    )
 
-
-# ============================================================
-# 7. BALANCED ACCURACY
-# ============================================================
-
-balanced_accuracy = balanced_accuracy_score(
-    y_test,
-    y_pred
-)
-
-
-print(
-    f"Balanced Accuracy: {balanced_accuracy:.4f}"
-)
-
-
-# ============================================================
-# 8. PRECISION
-# ============================================================
-
-precision = precision_score(
-    y_test,
-    y_pred,
-    average="macro",
-    zero_division=0
-)
-
-
-print(
-    f"Macro Precision: {precision:.4f}"
-)
-
-
-# ============================================================
-# 9. RECALL
-# ============================================================
-
-recall = recall_score(
-    y_test,
-    y_pred,
-    average="macro",
-    zero_division=0
-)
-
-
-print(
-    f"Macro Recall: {recall:.4f}"
-)
-
-
-# ============================================================
-# 10. F1-SCORE
-# ============================================================
-
-f1 = f1_score(
-    y_test,
-    y_pred,
-    average="macro",
-    zero_division=0
-)
-
-
-print(
-    f"Macro F1-Score: {f1:.4f}"
-)
-
-
-# ============================================================
-# 11. CLASSIFICATION REPORT
-# ============================================================
-
-print(
-    "\n========== CLASSIFICATION REPORT =========="
-)
-
-print(
-    classification_report(
+    macro_precision = precision_score(
         y_test,
         y_pred,
+        average="macro",
         zero_division=0
     )
-)
 
+    macro_recall = recall_score(
+        y_test,
+        y_pred,
+        average="macro",
+        zero_division=0
+    )
 
-# ============================================================
-# 12. CONFUSION MATRIX
-# ============================================================
+    macro_f1 = f1_score(
+        y_test,
+        y_pred,
+        average="macro",
+        zero_division=0
+    )
 
-cm = confusion_matrix(
-    y_test,
-    y_pred,
-    labels=[
+    # Per-class recall
+    class_recalls = recall_score(
+        y_test,
+        y_pred,
+        labels=[
+            "High Risk",
+            "Medium Risk",
+            "Low Risk"
+        ],
+        average=None,
+        zero_division=0
+    )
+
+    print("\n========== PERFORMANCE METRICS ==========")
+
+    print(
+        f"Accuracy: {accuracy:.4f}"
+    )
+
+    print(
+        f"Balanced Accuracy: {balanced_accuracy:.4f}"
+    )
+
+    print(
+        f"Macro Precision: {macro_precision:.4f}"
+    )
+
+    print(
+        f"Macro Recall: {macro_recall:.4f}"
+    )
+
+    print(
+        f"Macro F1-Score: {macro_f1:.4f}"
+    )
+
+    print("\n========== CLASS RECALL ==========")
+
+    print(
+        f"High Risk Recall: {class_recalls[0]:.4f}"
+    )
+
+    print(
+        f"Medium Risk Recall: {class_recalls[1]:.4f}"
+    )
+
+    print(
+        f"Low Risk Recall: {class_recalls[2]:.4f}"
+    )
+
+    print(
+        "\n========== CLASSIFICATION REPORT =========="
+    )
+
+    print(
+        classification_report(
+            y_test,
+            y_pred,
+            zero_division=0
+        )
+    )
+
+    print(
+        "========== CONFUSION MATRIX =========="
+    )
+
+    labels = [
         "High Risk",
         "Medium Risk",
         "Low Risk"
+    ]
+
+    cm = confusion_matrix(
+        y_test,
+        y_pred,
+        labels=labels
+    )
+
+    print(
+        "Class order:"
+    )
+
+    print(
+        labels
+    )
+
+    print(
+        cm
+    )
+
+    return {
+        "Model": model_name,
+        "Accuracy": accuracy,
+        "Balanced Accuracy": balanced_accuracy,
+        "Macro Precision": macro_precision,
+        "Macro Recall": macro_recall,
+        "Macro F1": macro_f1,
+        "High Risk Recall": class_recalls[0],
+        "Medium Risk Recall": class_recalls[1],
+        "Low Risk Recall": class_recalls[2]
+    }
+
+
+# ============================================================
+# 7. EVALUATE BOTH MODELS
+# ============================================================
+
+baseline_results = evaluate_model(
+    baseline_model,
+    "BASELINE RANDOM FOREST"
+)
+
+tuned_results = evaluate_model(
+    tuned_model,
+    "TUNED RANDOM FOREST"
+)
+
+
+# ============================================================
+# 8. FINAL COMPARISON
+# ============================================================
+
+comparison = pd.DataFrame(
+    [
+        baseline_results,
+        tuned_results
     ]
 )
 
 
 print(
-    "\n========== CONFUSION MATRIX =========="
+    "\n\n"
 )
 
 print(
-    "Rows = Actual Classes"
+    "=" * 80
 )
 
 print(
-    "Columns = Predicted Classes"
+    "FINAL MODEL COMPARISON"
 )
 
 print(
-    "Class order:"
+    "=" * 80
 )
 
 print(
-    ["High Risk", "Medium Risk", "Low Risk"]
-)
-
-print(
-    cm
+    comparison.to_string(
+        index=False
+    )
 )
 
 
 # ============================================================
-# 13. HIGH RISK RECALL
+# 9. SAVE COMPARISON RESULTS
 # ============================================================
 
-class_report = classification_report(
-    y_test,
-    y_pred,
-    output_dict=True,
-    zero_division=0
+report_path = Path(
+    "reports/model_comparison.csv"
+)
+
+comparison.to_csv(
+    report_path,
+    index=False
 )
 
 
-high_risk_recall = class_report[
-    "High Risk"
-]["recall"]
-
-
 print(
-    "\n========== HIGH RISK DETECTION =========="
+    "\n========== COMPARISON SAVED =========="
 )
 
 print(
-    f"High Risk Recall: {high_risk_recall:.4f}"
-)
-
-
-# ============================================================
-# 14. FINAL EVALUATION SUMMARY
-# ============================================================
-
-print(
-    "\n========== EVALUATION SUMMARY =========="
-)
-
-print(
-    f"Accuracy          : {accuracy:.4f}"
-)
-
-print(
-    f"Balanced Accuracy : {balanced_accuracy:.4f}"
-)
-
-print(
-    f"Macro Precision   : {precision:.4f}"
-)
-
-print(
-    f"Macro Recall      : {recall:.4f}"
-)
-
-print(
-    f"Macro F1-Score    : {f1:.4f}"
-)
-
-print(
-    f"High Risk Recall  : {high_risk_recall:.4f}"
+    f"Results saved to: {report_path}"
 )
