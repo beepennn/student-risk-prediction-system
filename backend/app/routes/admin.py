@@ -11,6 +11,7 @@ from app.services.admin_service import (
     get_teacher_statistics,
     get_risk_trend,
     get_system_activity,
+    get_admin_dashboard_summary,
 )
 
 router = APIRouter(
@@ -61,3 +62,10 @@ def system_activity(
     current_user: User = Depends(require_admin),
 ):
     return get_system_activity(db)
+
+@router.get("/dashboard")
+def admin_dashboard(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return get_admin_dashboard_summary(db)

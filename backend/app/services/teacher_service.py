@@ -98,8 +98,16 @@ def get_teacher_dashboard(
 
         student_info = {
             "student_id": student.id,
+            "student_name": (
+                student.user.full_name
+                if student.user
+                else None
+            ),
             "roll_number": student.roll_number,
+            "department": student.department,
+            "semester": student.semester,
             "risk_level": prediction.risk_level,
+            "prediction_date": prediction.prediction_date,
         }
 
         if prediction.risk_level == "High":
@@ -123,7 +131,14 @@ def get_teacher_dashboard(
             students_without_intervention.append(
                 {
                     "student_id": student.id,
+                    "student_name": (
+                        student.user.full_name
+                        if student.user
+                        else None
+                    ),
                     "roll_number": student.roll_number,
+                    "department": student.department,
+                    "semester": student.semester,
                 }
             )
 
@@ -136,9 +151,18 @@ def get_teacher_dashboard(
     )
 
     recent_interventions = (
-        db.query(Intervention)
-        .filter(
-            Intervention.teacher_id == teacher_id
+        db.query(
+            Intervention,
+            Student,
+            User,
+        )
+        .join(
+            Student,
+            Intervention.student_id == Student.id,
+        )
+        .join(
+            User,
+            Student.user_id == User.id,
         )
         .order_by(
             Intervention.id.desc()
@@ -146,6 +170,23 @@ def get_teacher_dashboard(
         .limit(5)
         .all()
     )
+
+    recent_intervention_list = []
+
+    for intervention, student, user in recent_interventions:
+        recent_intervention_list.append(
+            {
+                "id": intervention.id,
+                "student_id": student.id,
+                "student_name": user.full_name,
+                "roll_number": student.roll_number,
+                "department": student.department,
+                "semester": student.semester,
+                "action_taken": intervention.action_taken,
+                "remarks": intervention.remarks,
+                "date": intervention.intervention_date,
+            }
+        )
 
     return {
         "summary": {
@@ -164,7 +205,7 @@ def get_teacher_dashboard(
 
         "students_without_intervention": students_without_intervention,
 
-        "recent_interventions": recent_interventions,
+        "recent_interventions": recent_intervention_list,
     }
 
 def get_teacher_interventions(
@@ -229,6 +270,69 @@ def search_students(
         }
         for student in students
     ]
+
+def get_teacher_students(
+    db: Session,
+    risk_level: str | None = None,
+    semester: int | None = None,
+    department: str | None = None,
+    skip: int = 0,
+    limit: int = 20,
+):
+    query = db.query(Student)
+
+    if semester is not None:
+        query = query.filter(Student.semester == semester)
+
+    if department:
+        query = query.filter(
+            Student.department.ilike(f"%{department}%")
+        )
+
+    students = (
+        query
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    results = []
+
+    for student in students:
+
+        prediction = get_latest_prediction(
+            db,
+            student.id,
+        )
+
+        if risk_level and prediction:
+            if prediction.risk_level != risk_level:
+                continue
+
+        if risk_level and prediction is None:
+            continue
+
+        results.append(
+            {
+                "student_id": student.id,
+                "student_name": (
+                    student.user.full_name
+                    if student.user
+                    else None
+                ),
+                "roll_number": student.roll_number,
+                "department": student.department,
+                "semester": student.semester,
+                "status": student.status,
+                "risk_level": (
+                    prediction.risk_level
+                    if prediction
+                    else None
+                ),
+            }
+        )
+
+    return results
 
 def get_teacher_analytics(
     db: Session,

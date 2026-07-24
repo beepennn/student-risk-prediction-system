@@ -13,6 +13,7 @@ from app.services.teacher_service import (
     get_teacher_interventions,
     search_students,
     get_teacher_analytics,
+    get_teacher_students,
 )
 
 from app.services.intervention_service import (
@@ -84,6 +85,25 @@ def intervene_student(
         student_id=student_id,
         action_taken=request.action_taken,
         remarks=request.remarks,
+    )
+
+@router.get("/students")
+def teacher_students(
+    risk_level: str | None = None,
+    semester: int | None = None,
+    department: str | None = None,
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
+):
+    return get_teacher_students(
+        db=db,
+        risk_level=risk_level,
+        semester=semester,
+        department=department,
+        skip=skip,
+        limit=limit,
     )
 
 @router.get("/students/search")

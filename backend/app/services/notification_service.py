@@ -274,3 +274,29 @@ def delete_notification(
     return {
         "message": "Notification deleted successfully."
     }
+
+def mark_all_notifications_as_read(
+    db: Session,
+    student_id: int,
+):
+    notifications = (
+        db.query(Notification)
+        .filter(
+            Notification.student_id == student_id,
+            Notification.is_read == False,
+        )
+        .all()
+    )
+
+    updated = 0
+
+    for notification in notifications:
+        notification.is_read = True
+        updated += 1
+
+    db.commit()
+
+    return {
+        "message": "All notifications marked as read.",
+        "updated": updated,
+    }
