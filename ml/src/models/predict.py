@@ -4,295 +4,242 @@ import shap
 
 from pathlib import Path
 
-from src.recommendation.recommendation_engine import (
-    generate_recommendations
-)
 
-from src.history.prediction_history import (
-    save_prediction_history
-)
 # ============================================================
-# 1. LOAD TRAINED MODEL
+# 1. MODEL PATH
 # ============================================================
 
-model_path = Path(
+MODEL_PATH = Path(
     "models/trained/random_forest_tuned.pkl"
 )
 
-model = joblib.load(
-    model_path
-)
 
-print(
-    "Tuned Random Forest model loaded successfully."
-)
+# ============================================================
+# 2. LOAD MODEL
+# ============================================================
+
+def load_model():
+    """
+    Load and return the trained Random Forest model.
+    """
+
+    model = joblib.load(MODEL_PATH)
+
+    return model
 
 
 # ============================================================
-# 2. CREATE SHAP EXPLAINER
+# 3. PREDICT STUDENT RISK
 # ============================================================
 
-explainer = shap.TreeExplainer(
-    model
-)
+def predict_student(student_features):
+    """
+    Predict academic risk for a student.
 
-print(
-    "SHAP TreeExplainer created successfully."
-)
+    Parameters
+    ----------
+    student_features : dict or pandas.DataFrame
+        Student feature values.
 
+    Returns
+    -------
+    str
+        Predicted academic risk.
+    """
 
-# ============================================================
-# 3. CREATE SAMPLE STUDENT INPUT
-# ============================================================
+    model = load_model()
 
-student_data = pd.DataFrame(
-    [
-        {
-            "AttendanceRate": 85.0,
-            "StudyHoursPerWeek": 15.0,
-            "PreviousGrade": 78.0,
-            "ExtracurricularActivities": 1.0,
-            "Study Hours": 4.8,
-            "Gender_Male": True,
-            "ParentalSupport_Low": False,
-            "ParentalSupport_Medium": False
-        }
-    ]
-)
+    if isinstance(student_features, dict):
+        student_features = pd.DataFrame(
+            [student_features]
+        )
 
-
-print(
-    "\n========== STUDENT INPUT =========="
-)
-
-print(
-    student_data.to_string(
-        index=False
-    )
-)
-
-
-# ============================================================
-# 4. MAKE PREDICTION
-# ============================================================
-
-prediction = model.predict(
-    student_data
-)
-
-predicted_risk = prediction[0]
-
-
-# ============================================================
-# 5. GET PREDICTION PROBABILITIES
-# ============================================================
-
-probabilities = model.predict_proba(
-    student_data
-)[0]
-
-
-print(
-    "\n========== PREDICTION RESULT =========="
-)
-
-print(
-    "Predicted Academic Risk:",
-    predicted_risk
-)
-
-
-print(
-    "\n========== PREDICTION PROBABILITIES =========="
-)
-
-for class_name, probability in zip(
-    model.classes_,
-    probabilities
-):
-
-    print(
-        f"{class_name}: {probability:.4f}"
+    prediction = model.predict(
+        student_features
     )
 
-
-# ============================================================
-# 6. PREDICTION CONFIDENCE
-# ============================================================
-
-confidence = max(
-    probabilities
-)
-
-
-print(
-    "\n========== PREDICTION CONFIDENCE =========="
-)
-
-print(
-    f"Confidence: {confidence:.4f}"
-)
-
-print(
-    f"Confidence Percentage: {confidence * 100:.2f}%"
-)
+    return prediction[0]
 
 
 # ============================================================
-# 7. CALCULATE SHAP VALUES
+# 4. PREDICT PROBABILITIES
 # ============================================================
 
-print(
-    "\n========== SHAP EXPLANATION =========="
-)
+def predict_proba(student_features):
+    """
+    Return prediction probabilities for a student.
 
-shap_explanation = explainer(
-    student_data
-)
+    Parameters
+    ----------
+    student_features : dict or pandas.DataFrame
+        Student feature values.
 
+    Returns
+    -------
+    dict
+        Probability for each academic risk class.
+    """
 
-# ============================================================
-# 8. FIND PREDICTED CLASS INDEX
-# ============================================================
+    model = load_model()
 
-predicted_class_index = list(
-    model.classes_
-).index(
-    predicted_risk
-)
+    if isinstance(student_features, dict):
+        student_features = pd.DataFrame(
+            [student_features]
+        )
 
+    probabilities = model.predict_proba(
+        student_features
+    )[0]
 
-# ============================================================
-# 9. EXTRACT SHAP VALUES FOR PREDICTED CLASS
-# ============================================================
-
-student_shap_values = (
-    shap_explanation.values[
-        0,
-        :,
-        predicted_class_index
-    ]
-)
-
-
-# ============================================================
-# 10. CREATE SHAP EXPLANATION TABLE
-# ============================================================
-
-shap_df = pd.DataFrame(
-    {
-        "Feature": student_data.columns,
-        "Feature_Value": student_data.iloc[0].values,
-        "SHAP_Value": student_shap_values
+    return {
+        class_name: float(probability)
+        for class_name, probability in zip(
+            model.classes_,
+            probabilities
+        )
     }
-)
-
-
-# Calculate absolute SHAP values
-
-shap_df[
-    "Absolute_SHAP"
-] = abs(
-    shap_df[
-        "SHAP_Value"
-    ]
-)
-
-
-# Sort by contribution
-
-shap_df = (
-    shap_df
-    .sort_values(
-        by="Absolute_SHAP",
-        ascending=False
-    )
-    .reset_index(
-        drop=True
-    )
-)
 
 
 # ============================================================
-# 11. DISPLAY SHAP EXPLANATION
+# 5. GENERATE SHAP EXPLANATION
 # ============================================================
 
-print(
-    "\nTop factors influencing this prediction:"
-)
+def generate_shap(student_features):
+    """
+    Generate SHAP feature contributions
+    for a student's prediction.
 
-print(
-    shap_df[
-        [
-            "Feature",
-            "Feature_Value",
-            "SHAP_Value"
+    Parameters
+    ----------
+    student_features : dict or pandas.DataFrame
+        Student feature values.
+
+    Returns
+    -------
+    list
+        Feature-level SHAP explanations.
+    """
+
+    model = load_model()
+
+    explainer = shap.TreeExplainer(
+        model
+    )
+
+    if isinstance(student_features, dict):
+        student_features = pd.DataFrame(
+            [student_features]
+        )
+
+    shap_explanation = explainer(
+        student_features
+    )
+
+    predicted_risk = model.predict(
+        student_features
+    )[0]
+
+    predicted_class_index = list(
+        model.classes_
+    ).index(
+        predicted_risk
+    )
+
+    shap_values = (
+        shap_explanation.values[
+            0,
+            :,
+            predicted_class_index
         ]
-    ].to_string(
-        index=False
     )
-)
+
+    explanation = []
+
+    for feature, value, shap_value in zip(
+        student_features.columns,
+        student_features.iloc[0].values,
+        shap_values
+    ):
+
+        explanation.append(
+            {
+                "feature": feature,
+                "feature_value": value,
+                "shap_value": float(shap_value),
+                "absolute_shap": float(
+                    abs(shap_value)
+                )
+            }
+        )
+
+    explanation.sort(
+        key=lambda x: x["absolute_shap"],
+        reverse=True
+    )
+
+    return explanation
 
 
 # ============================================================
-# 12. DISPLAY TOP 3 CONTRIBUTING FEATURES
+# 6. LOCAL TEST ONLY
 # ============================================================
 
-print(
-    "\n========== TOP 3 CONTRIBUTING FEATURES =========="
-)
+if __name__ == "__main__":
 
-top_features = shap_df.head(
-    3
-)
+    sample_student = {
+        "AttendanceRate": 85.0,
+        "StudyHoursPerWeek": 15.0,
+        "PreviousGrade": 78.0,
+        "ExtracurricularActivities": 1.0,
+        "Study Hours": 4.8,
+        "Gender_Male": True,
+        "ParentalSupport_Low": False,
+        "ParentalSupport_Medium": False
+    }
 
+    print(
+        "Tuned Random Forest model loaded successfully."
+    )
 
-for index, row in top_features.iterrows():
+    prediction = predict_student(
+        sample_student
+    )
 
-    direction = (
-        "increased"
-        if row["SHAP_Value"] > 0
-        else "decreased"
+    probabilities = predict_proba(
+        sample_student
+    )
+
+    shap_explanation = generate_shap(
+        sample_student
     )
 
     print(
-        f"{index + 1}. "
-        f"{row['Feature']} "
-        f"({direction} contribution: "
-        f"{row['SHAP_Value']:.4f})"
+        "\n========== PREDICTION =========="
     )
-
-# ============================================================
-# 13. PERSONALIZED RECOMMENDATION ENGINE
-# ============================================================
-
-recommendations = generate_recommendations(
-    predicted_risk=predicted_risk,
-    student_data=student_data,
-    shap_df=shap_df
-)
-
-
-print(
-    "\n========== PERSONALIZED RECOMMENDATIONS =========="
-)
-
-
-for number, recommendation in enumerate(
-    recommendations,
-    start=1
-):
 
     print(
-        f"{number}. {recommendation}"
+        "Predicted Academic Risk:",
+        prediction
     )
 
-# ============================================================
-# 14. SAVE PREDICTION HISTORY
-# ============================================================
+    print(
+        "\n========== PROBABILITIES =========="
+    )
 
-save_prediction_history(
-    predicted_risk=predicted_risk,
-    confidence=confidence,
-    student_data=student_data
-)
+    for class_name, probability in probabilities.items():
+
+        print(
+            f"{class_name}: "
+            f"{probability:.4f}"
+        )
+
+    print(
+        "\n========== TOP SHAP FEATURES =========="
+    )
+
+    for item in shap_explanation[:3]:
+
+        print(
+            item["feature"],
+            item["shap_value"]
+        )
