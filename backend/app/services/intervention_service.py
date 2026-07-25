@@ -1,13 +1,50 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.models.intervention import Intervention
 from app.schemas.intervention import InterventionCreate
 
 from app.services.audit_service import create_audit_log
+from app.core.api_response import success_response
 
-def get_interventions(db: Session):
-    return db.query(Intervention).all()
+def get_interventions(
+    db: Session,
+    skip: int = 0,
+    limit: int = 20,
+    sort_by: str = "id",
+    order: str = "desc",
+    teacher_id: int | None = None,
+    student_id: int | None = None,
+):
+    query = db.query(Intervention)
+
+    if teacher_id is not None:
+        query = query.filter(
+            Intervention.teacher_id == teacher_id
+        )
+
+    if student_id is not None:
+        query = query.filter(
+            Intervention.student_id == student_id
+        )
+
+    sort_column = getattr(
+        Intervention,
+        sort_by,
+        Intervention.id,
+    )
+
+    if order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
+    return (
+        query.offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_intervention(
@@ -55,15 +92,32 @@ def create_intervention(
 def get_student_interventions(
     db: Session,
     student_id: int,
+    skip: int = 0,
+    limit: int = 20,
+    sort_by: str = "id",
+    order: str = "desc",
 ):
-    return (
+    query = (
         db.query(Intervention)
         .filter(
             Intervention.student_id == student_id
         )
-        .order_by(
-            Intervention.id.desc()
-        )
+    )
+
+    sort_column = getattr(
+        Intervention,
+        sort_by,
+        Intervention.id,
+    )
+
+    if order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
+    return (
+        query.offset(skip)
+        .limit(limit)
         .all()
     )
 
@@ -154,7 +208,45 @@ def delete_intervention(
         entity_id=intervention_id,
     )
 
-    return {
-        "message": "Intervention deleted successfully."
-    }
+    return success_response(
+        message="Intervention deleted successfully."
+    )
 
+def get_intervention_statistics(db: Session):
+    total = db.query(Intervention).count()
+
+    teacher_count = (
+        db.query(
+            Intervention.teacher_id,
+            func.count(Intervention.id)
+        )
+        .group_by(Intervention.teacher_id)
+        .all()
+    )
+
+    student_count = (
+        db.query(
+            Intervention.student_id,
+            func.count(Intervention.id)
+        )
+        .group_by(Intervention.student_id)
+        .all()
+    )
+
+    return {
+        "total_interventions": total,
+        "teacher_statistics": [
+            {
+                "teacher_id": teacher_id,
+                "interventions": count,
+            }
+            for teacher_id, count in teacher_count
+        ],
+        "student_statistics": [
+            {
+                "student_id": student_id,
+                "interventions": count,
+            }
+            for student_id, count in student_count
+        ],
+    }

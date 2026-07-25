@@ -5,6 +5,7 @@ from app.models.user import User
 from app.schemas.user import UserCreate
 from app.core.security import hash_password
 from app.services.audit_service import create_audit_log
+from app.core.api_response import success_response
 
 
 def get_users(db: Session):
@@ -153,6 +154,6 @@ def delete_user(
         entity_id=deleted_id,
     )
 
-    return {
-        "message": "User deleted successfully."
-    }
+    return success_response(
+        message="User deleted successfully."
+    )

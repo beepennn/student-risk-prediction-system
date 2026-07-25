@@ -278,20 +278,34 @@ def get_teacher_students(
     department: str | None = None,
     skip: int = 0,
     limit: int = 20,
+    sort_by: str = "id",
+    order: str = "desc",
 ):
     query = db.query(Student)
 
     if semester is not None:
-        query = query.filter(Student.semester == semester)
+        query = query.filter(
+            Student.semester == semester
+        )
 
     if department:
         query = query.filter(
             Student.department.ilike(f"%{department}%")
         )
 
+    sort_column = getattr(
+        Student,
+        sort_by,
+        Student.id,
+    )
+
+    if order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
     students = (
-        query
-        .offset(skip)
+        query.offset(skip)
         .limit(limit)
         .all()
     )

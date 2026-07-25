@@ -37,7 +37,6 @@ router = APIRouter(
     tags=["Notifications"],
 )
 
-
 def get_db():
     db = SessionLocal()
     try:
@@ -51,11 +50,26 @@ def get_db():
     response_model=list[NotificationResponse],
 )
 def read_notifications(
+    skip: int = 0,
+    limit: int = 20,
+    notification_type: str | None = None,
+    is_sent: bool | None = None,
+    is_read: bool | None = None,
+    sort_by: str = "created_at",
+    order: str = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_notifications(db)
-
+    return get_notifications(
+        db=db,
+        skip=skip,
+        limit=limit,
+        notification_type=notification_type,
+        is_sent=is_sent,
+        is_read=is_read,
+        sort_by=sort_by,
+        order=order,
+    )
 
 # -------------------------------
 # ADMIN NOTIFICATION LIST

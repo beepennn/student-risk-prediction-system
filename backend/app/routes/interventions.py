@@ -15,6 +15,7 @@ from app.services.intervention_service import (
     get_student_interventions,
     update_intervention,
     delete_intervention,
+    get_intervention_statistics,
 )
 
 from app.core.dependencies import (
@@ -43,11 +44,31 @@ def get_db():
     response_model=list[InterventionResponse],
 )
 def read_interventions(
+    skip: int = 0,
+    limit: int = 20,
+    sort_by: str = "id",
+    order: str = "desc",
+    teacher_id: int | None = None,
+    student_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_interventions(db)
+    return get_interventions(
+        db=db,
+        skip=skip,
+        limit=limit,
+        sort_by=sort_by,
+        order=order,
+        teacher_id=teacher_id,
+        student_id=student_id,
+    )
 
+@router.get("/statistics")
+def intervention_statistics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return get_intervention_statistics(db)
 
 @router.get(
     "/student/{student_id}",
@@ -55,12 +76,20 @@ def read_interventions(
 )
 def read_student_interventions(
     student_id: int,
+    skip: int = 0,
+    limit: int = 20,
+    sort_by: str = "id",
+    order: str = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
     return get_student_interventions(
-        db,
-        student_id,
+        db=db,
+        student_id=student_id,
+        skip=skip,
+        limit=limit,
+        sort_by=sort_by,
+        order=order,
     )
 
 
@@ -108,7 +137,6 @@ def edit_intervention(
         intervention,
         current_user.id,
     )
-
 
 @router.delete("/{intervention_id}")
 def remove_intervention(
