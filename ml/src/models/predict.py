@@ -8,8 +8,13 @@ from pathlib import Path
 # MODEL PATH
 # ============================================================
 
-MODEL_PATH = Path(
-    "models/trained/random_forest_tuned.pkl"
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+MODEL_PATH = (
+    BASE_DIR
+    / "models"
+    / "trained"
+    / "random_forest_tuned.pkl"
 )
 
 

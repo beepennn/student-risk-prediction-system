@@ -49,14 +49,14 @@ Low Risk       1588
 ## Semester Distribution
 
 semester
-I/I       650
-I/II      684
-II/I      599
-II/II     608
-III/I     629
-III/II    606
-IV/I      630
-IV/II     594
+1    650
+2    684
+3    599
+4    608
+5    629
+6    606
+7    630
+8    594
 
 ## Gender Distribution
 

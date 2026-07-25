@@ -42,3 +42,19 @@ def predict_student_risk(student_data: dict):
         "medium_probability": probabilities.get("Medium Risk", 0.0),
         "high_probability": probabilities.get("High Risk", 0.0),
     }
+
+if __name__ == "__main__":
+
+    sample_student = {
+        "attendance": 87,
+        "internal_marks": 61,
+        "assignment_score": 78,
+        "quiz_score": 74,
+        "previous_gpa": 3.45,
+        "semester": 5,
+        "gender": "Male",
+    }
+
+    result = predict_student_risk(sample_student)
+
+    print(result)
