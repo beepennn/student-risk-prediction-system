@@ -55,10 +55,20 @@ def get_db():
     response_model=list[PredictionResponse],
 )
 def read_predictions(
+    skip: int = 0,
+    limit: int = 20,
+    risk_level: str | None = None,
+    sort_order: str = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_predictions(db)
+    return get_predictions(
+        db=db,
+        skip=skip,
+        limit=limit,
+        risk_level=risk_level,
+        sort_order=sort_order,
+    )
 
 
 @router.get(

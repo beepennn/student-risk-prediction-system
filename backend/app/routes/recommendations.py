@@ -53,10 +53,26 @@ def get_db():
     response_model=list[RecommendationResponse],
 )
 def read_recommendations(
+    skip: int = 0,
+    limit: int = 10,
+    priority: str | None = None,
+    semester: int | None = None,
+    department: str | None = None,
+    sort_by: str = "id",
+    order: str = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_recommendations(db)
+    return get_recommendations(
+        db=db,
+        skip=skip,
+        limit=limit,
+        priority=priority,
+        semester=semester,
+        department=department,
+        sort_by=sort_by,
+        order=order,
+    )
 
 
 @router.get("/admin")

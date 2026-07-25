@@ -41,8 +41,14 @@ def get_dashboard_summary(db: Session):
         "low_risk": low_risk,
     }
 
-def get_high_risk_students(db: Session, skip: int = 0, limit: int = 20):
-    latest_predictions = (
+def get_high_risk_students(
+    db: Session,
+    skip: int = 0,
+    limit: int = 20,
+    sort_by: str = "prediction_date",
+    order: str = "desc",
+):
+    query = (
         db.query(Prediction)
         .filter(
             Prediction.id.in_(
@@ -51,7 +57,21 @@ def get_high_risk_students(db: Session, skip: int = 0, limit: int = 20):
             )
         )
         .filter(Prediction.risk_level == "High")
-        .offset(skip)
+    )
+
+    sort_column = getattr(
+        Prediction,
+        sort_by,
+        Prediction.prediction_date,
+    )
+
+    if order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
+    latest_predictions = (
+        query.offset(skip)
         .limit(limit)
         .all()
     )
@@ -84,12 +104,13 @@ def get_students_by_department(db: Session):
         .all()
     )
 
-    result = {}
-
-    for department, count in departments:
-        result[department] = count
-
-    return result
+    return [
+        {
+            "department": department,
+            "total_students": count,
+        }
+        for department, count in departments
+    ]
 
 def get_students_by_semester(db: Session):
     semesters = (
@@ -102,15 +123,22 @@ def get_students_by_semester(db: Session):
         .all()
     )
 
-    result = {}
+    return [
+        {
+            "semester": semester,
+            "total_students": count,
+        }
+        for semester, count in semesters
+    ]
 
-    for semester, count in semesters:
-        result[semester] = count
-
-    return result
-
-def get_medium_risk_students(db: Session, skip: int = 0, limit: int = 20):
-    latest_predictions = (
+def get_medium_risk_students(
+    db: Session,
+    skip: int = 0,
+    limit: int = 20,
+    sort_by: str = "prediction_date",
+    order: str = "desc",
+):
+    query = (
         db.query(Prediction)
         .filter(
             Prediction.id.in_(
@@ -118,8 +146,22 @@ def get_medium_risk_students(db: Session, skip: int = 0, limit: int = 20):
                 .group_by(Prediction.student_id)
             )
         )
-        .filter(Prediction.risk_level == "Medium")
-        .offset(skip)
+       .filter(Prediction.risk_level == "Medium")
+    )
+
+    sort_column = getattr(
+        Prediction,
+        sort_by,
+        Prediction.prediction_date,
+    )
+
+    if order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
+    latest_predictions = (
+        query.offset(skip)
         .limit(limit)
         .all()
     )
@@ -142,8 +184,14 @@ def get_medium_risk_students(db: Session, skip: int = 0, limit: int = 20):
 
     return result
 
-def get_low_risk_students(db: Session, skip: int = 0, limit: int = 20):
-    latest_predictions = (
+def get_low_risk_students(
+    db: Session,
+    skip: int = 0,
+    limit: int = 20,
+    sort_by: str = "prediction_date",
+    order: str = "desc",
+):
+    query = (
         db.query(Prediction)
         .filter(
             Prediction.id.in_(
@@ -152,7 +200,21 @@ def get_low_risk_students(db: Session, skip: int = 0, limit: int = 20):
             )
         )
         .filter(Prediction.risk_level == "Low")
-        .offset(skip)
+    )
+
+    sort_column = getattr(
+        Prediction,
+        sort_by,
+        Prediction.prediction_date,
+    )
+
+    if order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
+    latest_predictions = (
+        query.offset(skip)
         .limit(limit)
         .all()
     )
@@ -199,7 +261,7 @@ def get_latest_predictions(db: Session):
                 "roll_number": student.roll_number,
                 "risk_level": prediction.risk_level,
                 "high_probability": prediction.high_probability,
-                "prediction_date": prediction.prediction_date,
+                "prediction_date": prediction.prediction_date.isoformat(),
             }
         )
 

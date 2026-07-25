@@ -7,10 +7,58 @@ from app.models.prediction import Prediction
 from app.models.student import Student
 
 from app.services.audit_service import create_audit_log
+from app.core.api_response import success_response
 
 
-def get_recommendations(db: Session):
-    return db.query(Recommendation).all()
+def get_recommendations(
+    db: Session,
+    skip: int = 0,
+    limit: int = 10,
+    priority: str | None = None,
+    semester: int | None = None,
+    department: str | None = None,
+    sort_by: str = "id",
+    order: str = "desc",
+):
+    query = (
+        db.query(Recommendation)
+        .join(Prediction)
+        .join(Student)
+    )
+
+    if priority:
+        query = query.filter(
+            Recommendation.priority == priority
+        )
+
+    if semester is not None:
+        query = query.filter(
+            Student.semester == semester
+        )
+
+    if department:
+        query = query.filter(
+            Student.department.ilike(
+                f"%{department}%"
+            )
+        )
+
+    sort_column = getattr(
+        Recommendation,
+        sort_by,
+        Recommendation.id,
+    )
+
+    if order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
+    return (
+        query.offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_recommendation(
@@ -238,6 +286,6 @@ def delete_recommendation(
         entity_id=recommendation_id_deleted,
     )
 
-    return {
-        "message": "Recommendation deleted successfully."
-    }
+    return success_response(
+        message="Recommendation deleted successfully."
+    )

@@ -94,6 +94,8 @@ def teacher_students(
     department: str | None = None,
     skip: int = 0,
     limit: int = 20,
+    sort_by: str = "id",
+    order: str = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
@@ -104,6 +106,8 @@ def teacher_students(
         department=department,
         skip=skip,
         limit=limit,
+        sort_by=sort_by,
+        order=order,
     )
 
 @router.get("/students/search")

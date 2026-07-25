@@ -12,6 +12,7 @@ from app.services.prediction_service import get_latest_prediction
 from app.services.recommendation_service import get_latest_recommendation
 from app.services.notification_service import get_student_notifications
 from app.services.audit_service import create_audit_log
+from app.core.api_response import success_response
 
 
 def get_students(
@@ -155,9 +156,9 @@ def delete_student(
         entity_id=deleted_id,
     )
 
-    return {
-        "message": "Student deleted successfully."
-    }
+    return success_response(
+        message="Student deleted successfully."
+    )
 
 def get_student_by_user_id(
     db: Session,

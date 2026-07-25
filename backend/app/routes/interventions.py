@@ -44,10 +44,24 @@ def get_db():
     response_model=list[InterventionResponse],
 )
 def read_interventions(
+    skip: int = 0,
+    limit: int = 20,
+    sort_by: str = "id",
+    order: str = "desc",
+    teacher_id: int | None = None,
+    student_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_interventions(db)
+    return get_interventions(
+        db=db,
+        skip=skip,
+        limit=limit,
+        sort_by=sort_by,
+        order=order,
+        teacher_id=teacher_id,
+        student_id=student_id,
+    )
 
 @router.get("/statistics")
 def intervention_statistics(
@@ -62,12 +76,20 @@ def intervention_statistics(
 )
 def read_student_interventions(
     student_id: int,
+    skip: int = 0,
+    limit: int = 20,
+    sort_by: str = "id",
+    order: str = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
     return get_student_interventions(
-        db,
-        student_id,
+        db=db,
+        student_id=student_id,
+        skip=skip,
+        limit=limit,
+        sort_by=sort_by,
+        order=order,
     )
 
 

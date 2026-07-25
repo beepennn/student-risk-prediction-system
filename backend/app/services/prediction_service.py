@@ -6,10 +6,37 @@ from app.models.student import Student
 from app.schemas.prediction import PredictionCreate
 
 from app.services.audit_service import create_audit_log
+from app.core.api_response import success_response
 
 
-def get_predictions(db: Session):
-    return db.query(Prediction).all()
+def get_predictions(
+    db: Session,
+    skip: int = 0,
+    limit: int = 20,
+    risk_level: str | None = None,
+    sort_order: str = "desc",
+):
+    query = db.query(Prediction)
+
+    if risk_level:
+        query = query.filter(
+            Prediction.risk_level == risk_level
+        )
+
+    if sort_order.lower() == "asc":
+        query = query.order_by(
+            Prediction.prediction_date.asc()
+        )
+    else:
+        query = query.order_by(
+            Prediction.prediction_date.desc()
+        )
+
+    return (
+        query.offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_prediction(
@@ -101,6 +128,7 @@ def get_admin_predictions(
     department: str | None = None,
     skip: int = 0,
     limit: int = 20,
+    sort_order: str = "desc",
 ):
     query = (
         db.query(Prediction)
@@ -127,11 +155,17 @@ def get_admin_predictions(
             )
         )
 
-    return (
-        query.order_by(
+    if sort_order.lower() == "asc":
+        query = query.order_by(
+            Prediction.prediction_date.asc()
+        )
+    else:
+        query = query.order_by(
             Prediction.prediction_date.desc()
         )
-        .offset(skip)
+
+    return (
+        query.offset(skip)
         .limit(limit)
         .all()
     )
@@ -165,6 +199,6 @@ def delete_prediction(
         entity_id=prediction_id,
     )
 
-    return {
-        "message": "Prediction deleted successfully."
-    }
+    return success_response(
+        message="Prediction deleted successfully."
+    )

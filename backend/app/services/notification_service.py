@@ -9,11 +9,52 @@ from app.services.email_service import send_email
 from app.models.student import Student
 
 from app.services.audit_service import create_audit_log
+from app.core.api_response import success_response
 
 
-def get_notifications(db: Session):
-    return db.query(Notification).all()
+def get_notifications(
+    db: Session,
+    skip: int = 0,
+    limit: int = 20,
+    notification_type: str | None = None,
+    is_sent: bool | None = None,
+    is_read: bool | None = None,
+    sort_by: str = "created_at",
+    order: str = "desc",
+):
+    query = db.query(Notification)
 
+    if notification_type:
+        query = query.filter(
+            Notification.notification_type == notification_type
+        )
+
+    if is_sent is not None:
+        query = query.filter(
+            Notification.is_sent == is_sent
+        )
+
+    if is_read is not None:
+        query = query.filter(
+            Notification.is_read == is_read
+        )
+
+    sort_column = getattr(
+        Notification,
+        sort_by,
+        Notification.created_at,
+    )
+
+    if order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
+    return (
+        query.offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 def get_notification(
     db: Session,
@@ -167,9 +208,9 @@ def mark_notification_as_read(
     db.commit()
     db.refresh(notification)
 
-    return {
-        "message": "Notification marked as read."
-    }
+    return success_response(
+        message="Notification marked as read."
+    )
 
 
 def get_admin_notifications(
@@ -234,9 +275,9 @@ def mark_notification_as_sent(
         entity_id=notification.id,
     )
 
-    return {
-        "message": "Notification marked as sent."
-    }
+    return success_response(
+        message="Notification marked as sent."
+    )
 
 
 def delete_notification(
@@ -271,9 +312,9 @@ def delete_notification(
         entity_id=deleted_id,
     )
 
-    return {
-        "message": "Notification deleted successfully."
-    }
+    return success_response(
+        message="Notification deleted successfully."
+    )
 
 def mark_all_notifications_as_read(
     db: Session,
@@ -296,7 +337,9 @@ def mark_all_notifications_as_read(
 
     db.commit()
 
-    return {
-        "message": "All notifications marked as read.",
-        "updated": updated,
-    }
+    return success_response(
+        message="All notifications marked as read.",
+        data={
+            "updated": updated,
+        },
+    )
