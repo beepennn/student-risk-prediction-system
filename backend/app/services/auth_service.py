@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.core.security import (
-    verify_password,
+from app.core.security import verify_password
+from app.auth.jwt_handler import (
     create_access_token,
+    create_refresh_token,
 )
 
 
@@ -27,14 +28,17 @@ def login_user(
     ):
         return None
 
-    token = create_access_token(
-        {
-            "sub": str(user.id),
-            "role": user.role,
-        }
-    )
+    payload = {
+        "sub": str(user.id),
+        "role": user.role,
+    }
+
+    access_token = create_access_token(payload)
+
+    refresh_token = create_refresh_token(payload)
 
     return {
-        "access_token": token,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
     }

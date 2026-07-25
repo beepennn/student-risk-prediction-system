@@ -1,14 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordRequestForm
 
 from app.database.connection import SessionLocal
 from app.schemas.auth import TokenResponse
-from fastapi.security import OAuth2PasswordRequestForm
-
 from app.services.auth_service import login_user
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.auth.roles import require_admin
+from app.auth.jwt_handler import (
+    verify_token,
+    create_access_token,
+)
 
 router = APIRouter(
     prefix="/auth",
@@ -45,6 +48,37 @@ def login(
         )
 
     return token
+
+
+@router.post("/refresh")
+def refresh_access_token(
+    refresh_token: str,
+):
+    payload = verify_token(refresh_token)
+
+    if payload is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid refresh token",
+        )
+
+    if payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=401,
+            detail="Refresh token required",
+        )
+
+    new_access_token = create_access_token(
+        {
+            "sub": payload["sub"],
+            "role": payload["role"],
+        }
+    )
+
+    return {
+        "access_token": new_access_token,
+        "token_type": "bearer",
+    }
 
 
 @router.get("/me")
