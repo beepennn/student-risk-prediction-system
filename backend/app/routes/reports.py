@@ -37,10 +37,16 @@ def dashboard_summary(
 
 @router.get("/high-risk-students")
 def high_risk_students(
+    skip: int = 0,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_high_risk_students(db)
+    return get_high_risk_students(
+        db,
+        skip,
+        limit,
+    )
 
 @router.get("/students-by-department")
 def students_by_department(
@@ -58,17 +64,29 @@ def students_by_semester(
 
 @router.get("/medium-risk-students")
 def medium_risk_students(
+    skip: int = 0,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_medium_risk_students(db)
+    return get_medium_risk_students(
+        db,
+        skip,
+        limit,
+    )
 
 @router.get("/low-risk-students")
 def low_risk_students(
+    skip: int = 0,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_low_risk_students(db)
+    return get_low_risk_students(
+        db,
+        skip,
+        limit,
+    )
 
 @router.get("/latest-predictions")
 def latest_predictions(

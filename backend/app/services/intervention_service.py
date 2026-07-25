@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.models.intervention import Intervention
 from app.schemas.intervention import InterventionCreate
@@ -158,3 +159,41 @@ def delete_intervention(
         "message": "Intervention deleted successfully."
     }
 
+def get_intervention_statistics(db: Session):
+    total = db.query(Intervention).count()
+
+    teacher_count = (
+        db.query(
+            Intervention.teacher_id,
+            func.count(Intervention.id)
+        )
+        .group_by(Intervention.teacher_id)
+        .all()
+    )
+
+    student_count = (
+        db.query(
+            Intervention.student_id,
+            func.count(Intervention.id)
+        )
+        .group_by(Intervention.student_id)
+        .all()
+    )
+
+    return {
+        "total_interventions": total,
+        "teacher_statistics": [
+            {
+                "teacher_id": teacher_id,
+                "interventions": count,
+            }
+            for teacher_id, count in teacher_count
+        ],
+        "student_statistics": [
+            {
+                "student_id": student_id,
+                "interventions": count,
+            }
+            for student_id, count in student_count
+        ],
+    }

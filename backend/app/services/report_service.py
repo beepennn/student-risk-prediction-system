@@ -41,7 +41,7 @@ def get_dashboard_summary(db: Session):
         "low_risk": low_risk,
     }
 
-def get_high_risk_students(db: Session):
+def get_high_risk_students(db: Session, skip: int = 0, limit: int = 20):
     latest_predictions = (
         db.query(Prediction)
         .filter(
@@ -51,6 +51,8 @@ def get_high_risk_students(db: Session):
             )
         )
         .filter(Prediction.risk_level == "High")
+        .offset(skip)
+        .limit(limit)
         .all()
     )
 
@@ -107,7 +109,7 @@ def get_students_by_semester(db: Session):
 
     return result
 
-def get_medium_risk_students(db: Session):
+def get_medium_risk_students(db: Session, skip: int = 0, limit: int = 20):
     latest_predictions = (
         db.query(Prediction)
         .filter(
@@ -117,6 +119,8 @@ def get_medium_risk_students(db: Session):
             )
         )
         .filter(Prediction.risk_level == "Medium")
+        .offset(skip)
+        .limit(limit)
         .all()
     )
 
@@ -138,7 +142,7 @@ def get_medium_risk_students(db: Session):
 
     return result
 
-def get_low_risk_students(db: Session):
+def get_low_risk_students(db: Session, skip: int = 0, limit: int = 20):
     latest_predictions = (
         db.query(Prediction)
         .filter(
@@ -148,6 +152,8 @@ def get_low_risk_students(db: Session):
             )
         )
         .filter(Prediction.risk_level == "Low")
+        .offset(skip)
+        .limit(limit)
         .all()
     )
 

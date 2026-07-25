@@ -15,6 +15,7 @@ from app.services.intervention_service import (
     get_student_interventions,
     update_intervention,
     delete_intervention,
+    get_intervention_statistics,
 )
 
 from app.core.dependencies import (
@@ -48,6 +49,12 @@ def read_interventions(
 ):
     return get_interventions(db)
 
+@router.get("/statistics")
+def intervention_statistics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return get_intervention_statistics(db)
 
 @router.get(
     "/student/{student_id}",
@@ -108,7 +115,6 @@ def edit_intervention(
         intervention,
         current_user.id,
     )
-
 
 @router.delete("/{intervention_id}")
 def remove_intervention(
