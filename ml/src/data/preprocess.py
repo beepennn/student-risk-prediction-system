@@ -1,362 +1,454 @@
 import pandas as pd
+
 from pathlib import Path
 
 
 # ============================================================
-# 1. LOAD RAW DATASET
+# 1. FILE PATHS
 # ============================================================
 
-def load_data():
-    """
-    Load the raw student performance dataset.
-    """
+INPUT_PATH = Path(
+    "data/raw/student_performance_new_with_gpa_semester.csv"
+)
 
-    data_path = Path(
-        "data/raw/student_performance.csv"
-    )
+OUTPUT_PATH = Path(
+    "data/processed/student_performance_processed.csv"
+)
 
-    df = pd.read_csv(data_path)
-
-    return df
-
-
-# ============================================================
-# 2. CREATE ACADEMIC RISK TARGET
-# ============================================================
-
-def create_academic_risk(df):
-    """
-    Create the AcademicRisk target variable from FinalGrade.
-
-    Risk Classification:
-    80-100   -> Low Risk
-    70-79    -> Medium Risk
-    Below 70 -> High Risk
-    """
-
-    def risk_category(grade):
-
-        if pd.isna(grade):
-            return None
-
-        elif grade >= 80:
-            return "Low Risk"
-
-        elif grade >= 70:
-            return "Medium Risk"
-
-        else:
-            return "High Risk"
-
-    df["AcademicRisk"] = df["FinalGrade"].apply(
-        risk_category
-    )
-
-    return df
+REPORT_PATH = Path(
+    "reports/preprocessing_report.md"
+)
 
 
 # ============================================================
-# 3. REMOVE MISSING TARGET VALUES
+# 2. LOAD NEW DATASET
 # ============================================================
 
-def remove_missing_target(df):
-    """
-    Remove records where AcademicRisk is missing.
+print("Loading new dataset...")
 
-    AcademicRisk is derived from FinalGrade.
-    If FinalGrade is missing, the target cannot be
-    determined reliably.
+df = pd.read_csv(
+    INPUT_PATH
+)
 
-    Target values are NOT imputed.
-    """
+print(
+    "New dataset loaded successfully."
+)
 
-    before_count = len(df)
-
-    df = df.dropna(
-        subset=["AcademicRisk"]
-    ).copy()
-
-    after_count = len(df)
-
-    removed_count = before_count - after_count
-
-    print("\n========== MISSING TARGET HANDLING ==========")
-    print(
-        f"Rows before removing missing target: {before_count}"
-    )
-
-    print(
-        f"Rows removed due to missing AcademicRisk: {removed_count}"
-    )
-
-    print(
-        f"Rows remaining: {after_count}"
-    )
-
-    return df
+print(
+    f"Original dataset shape: {df.shape}"
+)
 
 
 # ============================================================
-# 4. CLEAN DATA
+# 3. RENAME COLUMNS TO BACKEND / ML SCHEMA
 # ============================================================
 
-def clean_data(df):
-    """
-    Remove unnecessary columns and handle invalid values.
-    """
+column_mapping = {
 
-    # Remove identifier columns.
-    # These do not provide meaningful predictive information.
-    df = df.drop(
-        columns=[
-            "StudentID",
-            "Name"
-        ]
-    )
+    "Attendance (%)":
+        "attendance",
 
-    # FinalGrade was used to create AcademicRisk.
-    # Keeping it would cause target leakage.
-    df = df.drop(
-        columns=[
-            "FinalGrade"
-        ]
-    )
+    "Internal_marks":
+        "internal_marks",
 
-    # Study Hours cannot be negative.
-    # Replace invalid negative values with NaN.
-    df.loc[
-        df["Study Hours"] < 0,
-        "Study Hours"
-    ] = None
+    "Assignments_Avg":
+        "assignment_score",
 
-    return df
+    "Quizzes_score":
+        "quiz_score",
+
+    "Previous_gpa":
+        "previous_gpa",
+
+    "Semester":
+        "semester",
+
+    "Gender":
+        "gender"
+}
+
+
+df = df.rename(
+    columns=column_mapping
+)
 
 
 # ============================================================
-# 5. HANDLE MISSING FEATURE VALUES
+# 4. CHECK REQUIRED COLUMNS
 # ============================================================
 
-def handle_missing_values(df):
-    """
-    Handle missing values in feature columns.
+required_columns = [
 
-    Numerical features:
-    Median imputation.
+    "attendance",
 
-    Categorical features:
-    Mode imputation.
-    """
+    "internal_marks",
 
-    # Select numerical feature columns
-    numeric_columns = df.select_dtypes(
-        include=["number"]
-    ).columns
+    "assignment_score",
 
-    # Select categorical feature columns
-    categorical_columns = df.select_dtypes(
-        include=["object", "string"]
-    ).columns
+    "quiz_score",
 
-    # Median imputation for numerical features
-    for column in numeric_columns:
+    "previous_gpa",
 
-        df[column] = df[column].fillna(
-            df[column].median()
-        )
+    "semester",
 
-    # Mode imputation for categorical features
-    for column in categorical_columns:
+    "gender",
 
-        if not df[column].mode().empty:
-
-            df[column] = df[column].fillna(
-                df[column].mode()[0]
-            )
-
-    return df
+    "Final_Score"
+]
 
 
-# ============================================================
-# 6. ENCODE CATEGORICAL FEATURES
-# ============================================================
+missing_columns = [
 
-def encode_features(X):
-    """
-    Convert categorical feature columns into numerical
-    representation using one-hot encoding.
+    column
+    for column in required_columns
+    if column not in df.columns
 
-    drop_first=True avoids redundant dummy variables.
-    """
+]
 
-    categorical_columns = X.select_dtypes(
-        include=["object", "string"]
-    ).columns
 
-    X = pd.get_dummies(
-        X,
-        columns=categorical_columns,
-        drop_first=True
+if missing_columns:
+
+    raise ValueError(
+        "Missing required columns: "
+        + str(missing_columns)
     )
 
-    return X
+
+print(
+    "\nAll required columns are present."
+)
 
 
 # ============================================================
-# 7. SAVE PROCESSED DATASET
+# 5. DISPLAY MISSING VALUES
 # ============================================================
 
-def save_processed_data(X, y):
+print(
+    "\n========== MISSING VALUES =========="
+)
 
-    output_path = Path(
-        "data/processed/student_performance_processed.csv"
-    )
-
-    processed_data = X.copy()
-
-    processed_data["AcademicRisk"] = y.values
-
-    processed_data.to_csv(
-        output_path,
-        index=False
-    )
-
-    print(
-        "\n✅ Processed dataset saved successfully."
-    )
-
-    print(
-        f"Saved to: {output_path}"
-    )
+print(
+    df[required_columns]
+    .isnull()
+    .sum()
+)
 
 
 # ============================================================
-# MAIN PREPROCESSING PIPELINE
+# 6. REMOVE ROWS WITH MISSING REQUIRED VALUES
 # ============================================================
 
-if __name__ == "__main__":
-
-    # --------------------------------------------------------
-    # Step 1: Load raw dataset
-    # --------------------------------------------------------
-
-    df = load_data()
-
-    print(
-        "Dataset loaded successfully."
-    )
-
-    print(
-        "\nOriginal dataset shape:"
-    )
-
-    print(
-        df.shape
-    )
+before_rows = len(
+    df
+)
 
 
-    # --------------------------------------------------------
-    # Step 2: Create AcademicRisk target
-    # --------------------------------------------------------
-
-    df = create_academic_risk(df)
+df = df.dropna(
+    subset=required_columns
+)
 
 
-    # --------------------------------------------------------
-    # Step 3: Remove rows with missing target
-    # --------------------------------------------------------
-
-    df = remove_missing_target(df)
+after_rows = len(
+    df
+)
 
 
-    # --------------------------------------------------------
-    # Step 4: Separate target and features
-    # --------------------------------------------------------
-
-    y = df["AcademicRisk"].copy()
-
-    X = df.drop(
-        columns=[
-            "AcademicRisk"
-        ]
-    ).copy()
+rows_removed = (
+    before_rows
+    - after_rows
+)
 
 
-    # --------------------------------------------------------
-    # Step 5: Clean feature data
-    # --------------------------------------------------------
-
-    X = clean_data(X)
-
-
-    # --------------------------------------------------------
-    # Step 6: Handle missing feature values
-    # --------------------------------------------------------
-
-    X = handle_missing_values(X)
+print(
+    f"\nRows removed due to missing values: "
+    f"{rows_removed}"
+)
 
 
-    # --------------------------------------------------------
-    # Step 7: Encode categorical features
-    # --------------------------------------------------------
-
-    X = encode_features(X)
+print(
+    f"Rows remaining: {after_rows}"
+)
 
 
-    # --------------------------------------------------------
-    # Step 8: Display processed dataset information
-    # --------------------------------------------------------
+# ============================================================
+# 7. CREATE ACADEMIC RISK TARGET
+# ============================================================
 
-    print(
-        "\n========== PROCESSED DATA INFORMATION =========="
-    )
+def create_academic_risk(
+    final_score
+):
 
-    X.info()
+    if final_score >= 80:
 
+        return "Low Risk"
 
-    # --------------------------------------------------------
-    # Step 9: Display target distribution
-    # --------------------------------------------------------
+    elif final_score >= 60:
 
-    print(
-        "\n========== TARGET DISTRIBUTION =========="
-    )
+        return "Medium Risk"
 
-    print(
-        y.value_counts()
-    )
+    else:
+
+        return "High Risk"
 
 
-    # --------------------------------------------------------
-    # Step 10: Display missing values
-    # --------------------------------------------------------
-
-    print(
-        "\n========== MISSING VALUES =========="
-    )
-
-    print(
-        X.isnull().sum()
-    )
+df[
+    "AcademicRisk"
+] = df[
+    "Final_Score"
+].apply(
+    create_academic_risk
+)
 
 
-    # --------------------------------------------------------
-    # Step 11: Display first five rows
-    # --------------------------------------------------------
+# ============================================================
+# 8. DISPLAY ACADEMIC RISK DISTRIBUTION
+# ============================================================
 
-    print(
-        "\n========== FIRST 5 ROWS =========="
-    )
+print(
+    "\n========== ACADEMIC RISK DISTRIBUTION =========="
+)
 
-    print(
-        X.head()
-    )
+print(
+    df[
+        "AcademicRisk"
+    ].value_counts()
+)
 
 
-    # --------------------------------------------------------
-    # Step 12: Save processed dataset
-    # --------------------------------------------------------
+# ============================================================
+# 9. KEEP ONLY BACKEND-SUPPORTED ML FEATURES
+# ============================================================
 
-    save_processed_data(
-        X,
-        y
-    )
+ml_features = [
+
+    "attendance",
+
+    "internal_marks",
+
+    "assignment_score",
+
+    "quiz_score",
+
+    "previous_gpa",
+
+    "semester",
+
+    "gender"
+
+]
+
+
+processed_df = df[
+    ml_features
+    + [
+        "AcademicRisk"
+    ]
+].copy()
+
+
+# ============================================================
+# 10. DISPLAY FINAL ML FEATURES
+# ============================================================
+
+print(
+    "\n========== FINAL ML FEATURES =========="
+)
+
+print(
+    ml_features
+)
+
+
+# ============================================================
+# 11. DISPLAY SEMESTER DISTRIBUTION
+# ============================================================
+
+print(
+    "\n========== SEMESTER DISTRIBUTION =========="
+)
+
+print(
+    processed_df[
+        "semester"
+    ].value_counts()
+    .sort_index()
+)
+
+
+# ============================================================
+# 12. DISPLAY GENDER DISTRIBUTION
+# ============================================================
+
+print(
+    "\n========== GENDER DISTRIBUTION =========="
+)
+
+print(
+    processed_df[
+        "gender"
+    ].value_counts()
+)
+
+
+# ============================================================
+# 13. DISPLAY PROCESSED DATASET SHAPE
+# ============================================================
+
+print(
+    "\n========== PROCESSED DATASET SHAPE =========="
+)
+
+print(
+    processed_df.shape
+)
+
+
+# ============================================================
+# 14. DISPLAY PROCESSED DATASET PREVIEW
+# ============================================================
+
+print(
+    "\n========== PROCESSED DATASET PREVIEW =========="
+)
+
+print(
+    processed_df.head()
+)
+
+
+# ============================================================
+# 15. CHECK PROCESSED DATASET FOR MISSING VALUES
+# ============================================================
+
+print(
+    "\n========== PROCESSED DATASET MISSING VALUES =========="
+)
+
+print(
+    processed_df.isnull().sum()
+)
+
+
+# ============================================================
+# 16. CREATE OUTPUT DIRECTORIES
+# ============================================================
+
+OUTPUT_PATH.parent.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+REPORT_PATH.parent.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+
+# ============================================================
+# 17. SAVE PROCESSED DATASET
+# ============================================================
+
+processed_df.to_csv(
+    OUTPUT_PATH,
+    index=False
+)
+
+
+print(
+    f"\nProcessed dataset saved to: "
+    f"{OUTPUT_PATH}"
+)
+
+
+# ============================================================
+# 18. CREATE PREPROCESSING REPORT
+# ============================================================
+
+report_content = f"""
+# Preprocessing Report
+
+## Dataset
+
+Input file:
+
+`{INPUT_PATH}`
+
+Output file:
+
+`{OUTPUT_PATH}`
+
+## Dataset Shape
+
+Original rows: {before_rows}
+
+Rows removed: {rows_removed}
+
+Final rows: {after_rows}
+
+Final columns: {len(processed_df.columns)}
+
+## ML Features
+
+The final backend-compatible ML features are:
+
+- attendance
+- internal_marks
+- assignment_score
+- quiz_score
+- previous_gpa
+- semester
+- gender
+
+## Target
+
+Target variable:
+
+`AcademicRisk`
+
+## Academic Risk Distribution
+
+{df["AcademicRisk"].value_counts().to_string()}
+
+## Semester Distribution
+
+{processed_df["semester"].value_counts().sort_index().to_string()}
+
+## Gender Distribution
+
+{processed_df["gender"].value_counts().to_string()}
+
+## Missing Values
+
+{processed_df.isnull().sum().to_string()}
+
+## Encoding
+
+Gender and semester are kept as raw values.
+
+Encoding is handled automatically by the sklearn Pipeline using OneHotEncoder.
+
+The preprocessing script does not manually create:
+
+- Gender_Male
+- Semester_1
+- Semester_2
+- Semester_3
+- etc.
+"""
+
+
+REPORT_PATH.write_text(
+    report_content,
+    encoding="utf-8"
+)
+
+
+print(
+    f"Preprocessing report saved to: "
+    f"{REPORT_PATH}"
+)
+
+
+print(
+    "\n✅ NEW DATASET PREPROCESSING COMPLETED SUCCESSFULLY."
+)

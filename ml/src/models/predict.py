@@ -1,12 +1,11 @@
 import pandas as pd
 import joblib
-import shap
 
 from pathlib import Path
 
 
 # ============================================================
-# 1. MODEL PATH
+# MODEL PATH
 # ============================================================
 
 MODEL_PATH = Path(
@@ -15,48 +14,150 @@ MODEL_PATH = Path(
 
 
 # ============================================================
-# 2. LOAD MODEL
+# 1. LOAD MODEL
 # ============================================================
 
 def load_model():
+
     """
-    Load and return the trained Random Forest model.
+    Load the complete trained ML pipeline.
+
+    The pipeline contains:
+    - Feature preprocessing
+    - OneHotEncoder
+    - Random Forest classifier
     """
 
-    model = joblib.load(MODEL_PATH)
+    model = joblib.load(
+        MODEL_PATH
+    )
 
     return model
+
+
+# ============================================================
+# 2. PREPARE STUDENT DATA
+# ============================================================
+
+def prepare_student_data(
+    student_features
+):
+
+    """
+    Convert backend student data into a pandas DataFrame.
+
+    Expected input:
+
+    {
+        "attendance": 87,
+        "internal_marks": 61,
+        "assignment_score": 78,
+        "quiz_score": 74,
+        "previous_gpa": 3.45,
+        "semester": 5,
+        "gender": "Male"
+    }
+    """
+
+    required_features = [
+
+        "attendance",
+
+        "internal_marks",
+
+        "assignment_score",
+
+        "quiz_score",
+
+        "previous_gpa",
+
+        "semester",
+
+        "gender"
+
+    ]
+
+
+    # Check missing features
+
+    missing_features = [
+
+        feature
+
+        for feature in required_features
+
+        if feature not in student_features
+
+    ]
+
+
+    if missing_features:
+
+        raise ValueError(
+
+            "Missing required features: "
+
+            + str(missing_features)
+
+        )
+
+
+    # Create DataFrame
+
+    student_data = pd.DataFrame(
+
+        [
+
+            {
+
+                feature: student_features[feature]
+
+                for feature in required_features
+
+            }
+
+        ]
+
+    )
+
+
+    return student_data
 
 
 # ============================================================
 # 3. PREDICT STUDENT RISK
 # ============================================================
 
-def predict_student(student_features):
+def predict_student(
+    student_features
+):
+
     """
-    Predict academic risk for a student.
+    Predict the academic risk level.
 
-    Parameters
-    ----------
-    student_features : dict or pandas.DataFrame
-        Student feature values.
+    Returns:
 
-    Returns
-    -------
-    str
-        Predicted academic risk.
+    High Risk
+    Medium Risk
+    Low Risk
     """
 
     model = load_model()
 
-    if isinstance(student_features, dict):
-        student_features = pd.DataFrame(
-            [student_features]
-        )
+
+    student_data = prepare_student_data(
+
+        student_features
+
+    )
+
 
     prediction = model.predict(
-        student_features
+
+        student_data
+
     )
+
 
     return prediction[0]
 
@@ -65,181 +166,217 @@ def predict_student(student_features):
 # 4. PREDICT PROBABILITIES
 # ============================================================
 
-def predict_proba(student_features):
+def predict_proba(
+    student_features
+):
+
     """
-    Return prediction probabilities for a student.
-
-    Parameters
-    ----------
-    student_features : dict or pandas.DataFrame
-        Student feature values.
-
-    Returns
-    -------
-    dict
-        Probability for each academic risk class.
+    Return prediction probabilities
+    for High Risk, Medium Risk and Low Risk.
     """
 
     model = load_model()
 
-    if isinstance(student_features, dict):
-        student_features = pd.DataFrame(
-            [student_features]
-        )
+
+    student_data = prepare_student_data(
+
+        student_features
+
+    )
+
 
     probabilities = model.predict_proba(
-        student_features
+
+        student_data
+
     )[0]
 
-    return {
+
+    # Get model class names
+
+    classes = model.classes_
+
+
+    probability_result = {
+
         class_name: float(probability)
-        for class_name, probability in zip(
-            model.classes_,
+
+        for class_name, probability
+
+        in zip(
+
+            classes,
+
             probabilities
+
         )
+
     }
 
 
+    return probability_result
+
+
 # ============================================================
-# 5. GENERATE SHAP EXPLANATION
+# 5. COMPLETE PREDICTION
 # ============================================================
 
-def generate_shap(student_features):
+def predict_student_result(
+    student_features
+):
+
     """
-    Generate SHAP feature contributions
-    for a student's prediction.
+    Return complete prediction result.
 
-    Parameters
-    ----------
-    student_features : dict or pandas.DataFrame
-        Student feature values.
-
-    Returns
-    -------
-    list
-        Feature-level SHAP explanations.
+    This function is useful for backend integration.
     """
 
-    model = load_model()
+    risk_level = predict_student(
 
-    explainer = shap.TreeExplainer(
-        model
+        student_features
+
     )
 
-    if isinstance(student_features, dict):
-        student_features = pd.DataFrame(
-            [student_features]
+
+    probabilities = predict_proba(
+
+        student_features
+
+    )
+
+
+    confidence = max(
+
+        probabilities.values()
+
+    )
+
+
+    result = {
+
+        "risk_level": risk_level,
+
+        "probabilities": probabilities,
+
+        "confidence": float(
+
+            confidence
+
+        ),
+
+        "confidence_percentage": float(
+
+            confidence * 100
+
         )
 
-    shap_explanation = explainer(
-        student_features
-    )
+    }
 
-    predicted_risk = model.predict(
-        student_features
-    )[0]
 
-    predicted_class_index = list(
-        model.classes_
-    ).index(
-        predicted_risk
-    )
-
-    shap_values = (
-        shap_explanation.values[
-            0,
-            :,
-            predicted_class_index
-        ]
-    )
-
-    explanation = []
-
-    for feature, value, shap_value in zip(
-        student_features.columns,
-        student_features.iloc[0].values,
-        shap_values
-    ):
-
-        explanation.append(
-            {
-                "feature": feature,
-                "feature_value": value,
-                "shap_value": float(shap_value),
-                "absolute_shap": float(
-                    abs(shap_value)
-                )
-            }
-        )
-
-    explanation.sort(
-        key=lambda x: x["absolute_shap"],
-        reverse=True
-    )
-
-    return explanation
+    return result
 
 
 # ============================================================
-# 6. LOCAL TEST ONLY
+# 6. TEST ONLY WHEN RUN DIRECTLY
 # ============================================================
 
 if __name__ == "__main__":
 
+    print(
+
+        "========== ML PREDICTION TEST =========="
+
+    )
+
+
+    # Sample backend-compatible student
+
     sample_student = {
-        "AttendanceRate": 85.0,
-        "StudyHoursPerWeek": 15.0,
-        "PreviousGrade": 78.0,
-        "ExtracurricularActivities": 1.0,
-        "Study Hours": 4.8,
-        "Gender_Male": True,
-        "ParentalSupport_Low": False,
-        "ParentalSupport_Medium": False
+
+        "attendance": 87,
+
+        "internal_marks": 61,
+
+        "assignment_score": 78,
+
+        "quiz_score": 74,
+
+        "previous_gpa": 3.45,
+
+        "semester": 5,
+
+        "gender": "Male"
+
     }
 
-    print(
-        "Tuned Random Forest model loaded successfully."
-    )
 
-    prediction = predict_student(
+    result = predict_student_result(
+
         sample_student
+
     )
 
-    probabilities = predict_proba(
-        sample_student
-    )
-
-    shap_explanation = generate_shap(
-        sample_student
-    )
 
     print(
-        "\n========== PREDICTION =========="
+
+        "\n========== PREDICTION RESULT =========="
+
     )
 
-    print(
-        "Predicted Academic Risk:",
-        prediction
-    )
 
     print(
+
+        "Risk Level:",
+
+        result["risk_level"]
+
+    )
+
+
+    print(
+
         "\n========== PROBABILITIES =========="
+
     )
 
-    for class_name, probability in probabilities.items():
+
+    for (
+
+        class_name,
+
+        probability
+
+    ) in result["probabilities"].items():
 
         print(
+
             f"{class_name}: "
+
             f"{probability:.4f}"
+
         )
+
 
     print(
-        "\n========== TOP SHAP FEATURES =========="
+
+        "\nConfidence:",
+
+        f"{result['confidence']:.4f}"
+
     )
 
-    for item in shap_explanation[:3]:
 
-        print(
-            item["feature"],
-            item["shap_value"]
-        )
+    print(
+
+        "Confidence Percentage:",
+
+        f"{result['confidence_percentage']:.2f}%"
+
+    )
+
+
+    print(
+
+        "\n✅ Prediction module test completed successfully."
+
+    )
