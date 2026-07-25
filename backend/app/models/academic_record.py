@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, Float, ForeignKey, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from sqlalchemy import String
 
 from app.database.base import Base
 
@@ -23,6 +24,8 @@ class AcademicRecord(Base):
     previous_gpa = Column(Float, nullable=False)
 
     semester = Column(Integer, nullable=False)
+
+    gender = Column(String, nullable=False)
 
     created_at = Column(
         DateTime(timezone=True),

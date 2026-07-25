@@ -72,6 +72,23 @@ df = df.rename(
     columns=column_mapping
 )
 
+# ============================================================
+# CONVERT SEMESTER TO NUMERIC
+# ============================================================
+
+semester_mapping = {
+    "I/I": 1,
+    "I/II": 2,
+    "II/I": 3,
+    "II/II": 4,
+    "III/I": 5,
+    "III/II": 6,
+    "IV/I": 7,
+    "IV/II": 8,
+}
+
+df["semester"] = df["semester"].replace(semester_mapping)
+
 
 # ============================================================
 # 4. CHECK REQUIRED COLUMNS
