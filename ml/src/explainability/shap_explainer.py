@@ -6,294 +6,428 @@ from pathlib import Path
 
 
 # ============================================================
-# 1. LOAD PROCESSED DATASET
+# PATHS
 # ============================================================
 
-data_path = Path(
-    "data/processed/student_performance_processed.csv"
-)
-
-df = pd.read_csv(data_path)
-
-print("Processed dataset loaded successfully.")
-
-print("\n========== DATASET SHAPE ==========")
-print(df.shape)
-
-
-# ============================================================
-# 2. SEPARATE FEATURES AND TARGET
-# ============================================================
-
-X = df.drop(
-    columns=["AcademicRisk"]
-)
-
-y = df["AcademicRisk"]
-
-
-print("\n========== FEATURES ==========")
-
-print(
-    X.columns.tolist()
-)
-
-
-# ============================================================
-# 3. LOAD TUNED RANDOM FOREST MODEL
-# ============================================================
-
-model_path = Path(
+MODEL_PATH = Path(
     "models/trained/random_forest_tuned.pkl"
 )
 
-model = joblib.load(
-    model_path
-)
-
-print(
-    "\nTuned Random Forest model loaded successfully."
-)
-
-
-# ============================================================
-# 4. CREATE SHAP EXPLAINER
-# ============================================================
-
-print(
-    "\n========== SHAP EXPLAINER =========="
-)
-
-explainer = shap.TreeExplainer(
-    model
-)
-
-print(
-    "SHAP TreeExplainer created successfully."
-)
-
-
-# ============================================================
-# 5. CALCULATE SHAP VALUES
-# ============================================================
-
-print(
-    "\nCalculating SHAP values..."
-)
-
-shap_values = explainer(
-    X
-)
-
-print(
-    "SHAP values calculated successfully."
-)
-
-
-# ============================================================
-# 6. DISPLAY SHAP VALUE INFORMATION
-# ============================================================
-
-print(
-    "\n========== SHAP VALUE INFORMATION =========="
-)
-
-print(
-    "SHAP values shape:",
-    shap_values.values.shape
-)
-
-print(
-    "Feature data shape:",
-    X.shape
-)
-
-
-# ============================================================
-# 7. GLOBAL FEATURE IMPORTANCE USING SHAP
-# ============================================================
-
-print(
-    "\n========== GLOBAL SHAP FEATURE IMPORTANCE =========="
-)
-
-# Calculate mean absolute SHAP value
-# across all students and all classes
-
-mean_abs_shap = (
-    abs(shap_values.values)
-    .mean(axis=2)
-    .mean(axis=0)
-)
-
-
-shap_importance_df = pd.DataFrame(
-    {
-        "Feature": X.columns,
-        "Mean_Absolute_SHAP": mean_abs_shap
-    }
-)
-
-
-# Sort from highest to lowest
-
-shap_importance_df = (
-    shap_importance_df
-    .sort_values(
-        by="Mean_Absolute_SHAP",
-        ascending=False
-    )
-    .reset_index(
-        drop=True
-    )
-)
-
-
-print(
-    shap_importance_df.to_string(
-        index=False
-    )
-)
-
-
-# ============================================================
-# 8. SAVE GLOBAL SHAP IMPORTANCE
-# ============================================================
-
-output_path = Path(
+OUTPUT_PATH = Path(
     "reports/shap_feature_importance.csv"
 )
 
-shap_importance_df.to_csv(
-    output_path,
-    index=False
-)
 
+# ============================================================
+# LOAD COMPLETE PIPELINE
+# ============================================================
 
-print(
-    "\n========== SHAP REPORT SAVED =========="
-)
+def load_pipeline():
 
-print(
-    f"Results saved to: {output_path}"
-)
+    pipeline = joblib.load(
+        MODEL_PATH
+    )
+
+    return pipeline
 
 
 # ============================================================
-# 9. EXPLAIN ONE SAMPLE STUDENT
+# PREPARE STUDENT DATA
 # ============================================================
 
-print(
-    "\n========== INDIVIDUAL STUDENT EXPLANATION =========="
-)
+def prepare_student_data(
+    student_features
+):
 
-student_index = 0
+    required_features = [
 
-student_data = X.iloc[
-    [student_index]
-]
+        "attendance",
 
-student_prediction = model.predict(
-    student_data
-)[0]
+        "internal_marks",
 
-print(
-    "Student index:",
-    student_index
-)
+        "assignment_score",
 
-print(
-    "Predicted Academic Risk:",
-    student_prediction
-)
+        "quiz_score",
 
+        "previous_gpa",
 
-# ============================================================
-# 10. GET SHAP VALUES FOR PREDICTED CLASS
-# ============================================================
+        "semester",
 
-predicted_class_index = list(
-    model.classes_
-).index(
-    student_prediction
-)
+        "gender"
 
-
-student_shap_values = (
-    shap_values.values[
-        student_index,
-        :,
-        predicted_class_index
     ]
-)
+
+    missing_features = [
+
+        feature
+
+        for feature in required_features
+
+        if feature not in student_features
+
+    ]
+
+    if missing_features:
+
+        raise ValueError(
+
+            f"Missing required features: "
+            f"{missing_features}"
+
+        )
+
+    return pd.DataFrame(
+
+        [
+
+            {
+
+                feature: student_features[feature]
+
+                for feature in required_features
+
+            }
+
+        ]
+
+    )
 
 
-student_explanation_df = pd.DataFrame(
-    {
-        "Feature": X.columns,
-        "Feature_Value": student_data.iloc[0].values,
-        "SHAP_Value": student_shap_values
+# ============================================================
+# GENERATE SHAP EXPLANATION
+# ============================================================
+
+def generate_shap(
+    student_features
+):
+
+    pipeline = load_pipeline()
+
+    student_data = prepare_student_data(
+
+        student_features
+
+    )
+
+
+    # --------------------------------------------------------
+    # Get preprocessing step
+    # --------------------------------------------------------
+
+    preprocessor = pipeline.named_steps[
+
+        "preprocessor"
+
+    ]
+
+
+    # --------------------------------------------------------
+    # Get Random Forest classifier
+    # --------------------------------------------------------
+
+    classifier = pipeline.named_steps[
+
+        "classifier"
+
+    ]
+
+
+    # --------------------------------------------------------
+    # Transform raw backend data
+    # --------------------------------------------------------
+
+    transformed_data = preprocessor.transform(
+
+        student_data
+
+    )
+
+
+    # --------------------------------------------------------
+    # Get transformed feature names
+    # --------------------------------------------------------
+
+    feature_names = (
+
+        preprocessor.get_feature_names_out()
+
+    )
+
+
+    # --------------------------------------------------------
+    # Create SHAP TreeExplainer
+    # --------------------------------------------------------
+
+    explainer = shap.TreeExplainer(
+
+        classifier
+
+    )
+
+
+    # --------------------------------------------------------
+    # Calculate SHAP values
+    # --------------------------------------------------------
+
+    shap_values = explainer.shap_values(
+
+        transformed_data
+
+    )
+
+
+    # --------------------------------------------------------
+    # Get prediction
+    # --------------------------------------------------------
+
+    prediction = pipeline.predict(
+
+        student_data
+
+    )[0]
+
+
+    # --------------------------------------------------------
+    # Get predicted class index
+    # --------------------------------------------------------
+
+    predicted_class_index = list(
+
+        classifier.classes_
+
+    ).index(
+
+        prediction
+
+    )
+
+
+    # --------------------------------------------------------
+    # Handle SHAP output
+    # --------------------------------------------------------
+
+    if isinstance(
+
+        shap_values,
+
+        list
+
+    ):
+
+        student_shap_values = (
+
+            shap_values[
+
+                predicted_class_index
+
+            ][0]
+
+        )
+
+    else:
+
+        student_shap_values = (
+
+            shap_values[
+
+                0,
+
+                :,
+
+                predicted_class_index
+
+            ]
+
+        )
+
+
+    # --------------------------------------------------------
+    # Create explanation DataFrame
+    # --------------------------------------------------------
+
+    shap_df = pd.DataFrame(
+
+        {
+
+            "Feature":
+
+                feature_names,
+
+            "SHAP_Value":
+
+                student_shap_values
+
+        }
+
+    )
+
+
+    # --------------------------------------------------------
+    # Absolute SHAP
+    # --------------------------------------------------------
+
+    shap_df[
+
+        "Absolute_SHAP"
+
+    ] = (
+
+        shap_df[
+
+            "SHAP_Value"
+
+        ].abs()
+
+    )
+
+
+    # --------------------------------------------------------
+    # Sort by importance
+    # --------------------------------------------------------
+
+    shap_df = (
+
+        shap_df
+
+        .sort_values(
+
+            by="Absolute_SHAP",
+
+            ascending=False
+
+        )
+
+        .reset_index(
+
+            drop=True
+
+        )
+
+    )
+
+
+    return {
+
+        "prediction":
+
+            prediction,
+
+        "explanation":
+
+            shap_df
+
     }
-)
 
 
-# Sort by absolute SHAP value
+# ============================================================
+# TEST ONLY WHEN RUN DIRECTLY
+# ============================================================
 
-student_explanation_df[
-    "Absolute_SHAP"
-] = abs(
-    student_explanation_df[
-        "SHAP_Value"
-    ]
-)
+if __name__ == "__main__":
 
+    print(
 
-student_explanation_df = (
-    student_explanation_df
-    .sort_values(
-        by="Absolute_SHAP",
-        ascending=False
+        "========== SHAP EXPLANATION TEST =========="
+
     )
-    .reset_index(
-        drop=True
+
+
+    sample_student = {
+
+        "attendance": 87,
+
+        "internal_marks": 61,
+
+        "assignment_score": 78,
+
+        "quiz_score": 74,
+
+        "previous_gpa": 3.45,
+
+        "semester": 5,
+
+        "gender": "Male"
+
+    }
+
+
+    result = generate_shap(
+
+        sample_student
+
     )
-)
 
 
-print(
-    "\n========== STUDENT FEATURE CONTRIBUTIONS =========="
-)
+    print(
 
-print(
-    student_explanation_df.to_string(
+        "\nPredicted Risk:",
+
+        result["prediction"]
+
+    )
+
+
+    print(
+
+        "\n========== TOP SHAP FEATURES =========="
+
+    )
+
+
+    print(
+
+        result[
+
+            "explanation"
+
+        ].head(
+
+            10
+
+        ).to_string(
+
+            index=False
+
+        )
+
+    )
+
+
+    # Save report
+
+    OUTPUT_PATH.parent.mkdir(
+
+        parents=True,
+
+        exist_ok=True
+
+    )
+
+
+    result[
+
+        "explanation"
+
+    ].to_csv(
+
+        OUTPUT_PATH,
+
         index=False
+
     )
-)
 
 
-# ============================================================
-# 11. SAVE INDIVIDUAL EXPLANATION
-# ============================================================
+    print(
 
-individual_output_path = Path(
-    "reports/student_0_shap_explanation.csv"
-)
+        "\nSHAP report saved to:",
 
-student_explanation_df.to_csv(
-    individual_output_path,
-    index=False
-)
+        OUTPUT_PATH
+
+    )
 
 
-print(
-    "\n========== INDIVIDUAL EXPLANATION SAVED =========="
-)
+    print(
 
-print(
-    f"Results saved to: {individual_output_path}"
-)
+        "\n✅ SHAP explanation completed successfully."
 
-
-print(
-    "\n✅ SHAP EXPLAINABILITY ANALYSIS COMPLETED SUCCESSFULLY."
-)
+    )

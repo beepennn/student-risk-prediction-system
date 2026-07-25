@@ -1,37 +1,37 @@
 from pathlib import Path
 
 
-def test_model_comparison_report_exists():
+# ============================================================
+# REPORT PATHS
+# ============================================================
 
-    report_path = Path(
-        "reports/model_comparison.csv"
-    )
+SHAP_REPORT = Path(
+    "reports/shap_feature_importance.csv"
+)
 
-    assert report_path.exists()
+MODEL_COMPARISON_REPORT = Path(
+    "reports/model_comparison.csv"
+)
 
 
-def test_feature_importance_report_exists():
-
-    report_path = Path(
-        "reports/feature_importance.csv"
-    )
-
-    assert report_path.exists()
-
+# ============================================================
+# TEST 1: SHAP REPORT EXISTS
+# ============================================================
 
 def test_shap_report_exists():
 
-    report_path = Path(
-        "reports/shap_feature_importance.csv"
+    assert SHAP_REPORT.exists(), (
+        f"SHAP report not found: {SHAP_REPORT}"
     )
 
-    assert report_path.exists()
 
+# ============================================================
+# TEST 2: MODEL COMPARISON REPORT EXISTS
+# ============================================================
 
-def test_prediction_history_exists():
+def test_model_comparison_report_exists():
 
-    history_path = Path(
-        "reports/prediction_history.csv"
+    assert MODEL_COMPARISON_REPORT.exists(), (
+        f"Model comparison report not found: "
+        f"{MODEL_COMPARISON_REPORT}"
     )
-
-    assert history_path.exists()

@@ -1,38 +1,49 @@
 from pathlib import Path
+
 import joblib
 import pandas as pd
 
 
+# ============================================================
+# MODEL PATH
+# ============================================================
+
+MODEL_PATH = Path(
+    "models/trained/random_forest_tuned.pkl"
+)
+
+
+# ============================================================
+# TEST 1: CHECK MODEL EXISTS
+# ============================================================
+
 def test_tuned_model_exists():
 
-    model_path = Path(
-        "models/trained/random_forest_tuned.pkl"
+    assert MODEL_PATH.exists(), (
+        f"Model file not found: {MODEL_PATH}"
     )
 
-    assert model_path.exists()
 
+# ============================================================
+# TEST 2: CHECK MODEL CAN BE LOADED AND PREDICT
+# ============================================================
 
 def test_tuned_model_can_predict():
 
-    model_path = Path(
-        "models/trained/random_forest_tuned.pkl"
-    )
-
     model = joblib.load(
-        model_path
+        MODEL_PATH
     )
 
     student_data = pd.DataFrame(
         [
             {
-                "AttendanceRate": 85.0,
-                "StudyHoursPerWeek": 15.0,
-                "PreviousGrade": 78.0,
-                "ExtracurricularActivities": 1.0,
-                "Study Hours": 4.8,
-                "Gender_Male": True,
-                "ParentalSupport_Low": False,
-                "ParentalSupport_Medium": False
+                "attendance": 87,
+                "internal_marks": 61,
+                "assignment_score": 78,
+                "quiz_score": 74,
+                "previous_gpa": 3.45,
+                "semester": 5,
+                "gender": "Male"
             }
         ]
     )
@@ -44,34 +55,33 @@ def test_tuned_model_can_predict():
     assert len(prediction) == 1
 
 
+# ============================================================
+# TEST 3: CHECK PREDICTION IS VALID
+# ============================================================
+
 def test_prediction_is_valid_risk():
 
-    model_path = Path(
-        "models/trained/random_forest_tuned.pkl"
-    )
-
     model = joblib.load(
-        model_path
+        MODEL_PATH
     )
 
     student_data = pd.DataFrame(
         [
             {
-                "AttendanceRate": 85.0,
-                "StudyHoursPerWeek": 15.0,
-                "PreviousGrade": 78.0,
-                "ExtracurricularActivities": 1.0,
-                "Study Hours": 4.8,
-                "Gender_Male": True,
-                "ParentalSupport_Low": False,
-                "ParentalSupport_Medium": False
+                "attendance": 87,
+                "internal_marks": 61,
+                "assignment_score": 78,
+                "quiz_score": 74,
+                "previous_gpa": 3.45,
+                "semester": 5,
+                "gender": "Male"
             }
         ]
     )
 
     prediction = model.predict(
         student_data
-    )[0]
+    )
 
     valid_risks = [
         "High Risk",
@@ -79,4 +89,4 @@ def test_prediction_is_valid_risk():
         "Low Risk"
     ]
 
-    assert prediction in valid_risks
+    assert prediction[0] in valid_risks
