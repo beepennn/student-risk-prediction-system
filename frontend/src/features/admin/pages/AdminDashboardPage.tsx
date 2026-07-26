@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-
 import {
   FiAlertTriangle,
   FiBell,
@@ -10,6 +9,9 @@ import {
 import StatCard from "../../../components/cards/StatCard";
 import RiskDistributionChart from "../../../components/charts/RiskDistributionChart";
 import RecentActivityTable from "../../../components/tables/RecentActivityTable";
+import DepartmentSummaryTable from "../../../components/tables/DepartmentSummaryTable";
+import SemesterSummaryTable from "../../../components/tables/SemesterSummaryTable";
+import TeacherSummaryTable from "../../../components/tables/TeacherSummaryTable";
 
 import { getDashboardData } from "../services/dashboardService";
 import type { DashboardResponse } from "../types/dashboard";
@@ -61,6 +63,7 @@ function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold">
           Admin Dashboard
@@ -71,6 +74,7 @@ function AdminDashboardPage() {
         </p>
       </div>
 
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Students"
@@ -109,6 +113,7 @@ function AdminDashboardPage() {
         />
       </div>
 
+      {/* Risk Distribution */}
       <div className="rounded-xl bg-white p-6 shadow-md">
         <h2 className="mb-4 text-xl font-semibold">
           Risk Distribution
@@ -119,6 +124,7 @@ function AdminDashboardPage() {
         />
       </div>
 
+      {/* Recent Activity */}
       <div className="rounded-xl bg-white p-6 shadow-md">
         <h2 className="mb-4 text-xl font-semibold">
           Recent Activity
@@ -126,6 +132,39 @@ function AdminDashboardPage() {
 
         <RecentActivityTable
           activity={dashboard.recent_activity}
+        />
+      </div>
+
+      {/* Department Summary */}
+      <div className="rounded-xl bg-white p-6 shadow-md">
+        <h2 className="mb-4 text-xl font-semibold">
+          Department Summary
+        </h2>
+
+        <DepartmentSummaryTable
+          departments={dashboard.department_summary}
+        />
+      </div>
+
+      {/* Semester Summary */}
+      <div className="rounded-xl bg-white p-6 shadow-md">
+        <h2 className="mb-4 text-xl font-semibold">
+          Semester Summary
+        </h2>
+
+        <SemesterSummaryTable
+          semesters={dashboard.semester_summary}
+        />
+      </div>
+
+      {/* Teacher Summary */}
+      <div className="rounded-xl bg-white p-6 shadow-md">
+        <h2 className="mb-4 text-xl font-semibold">
+          Teacher Summary
+        </h2>
+
+        <TeacherSummaryTable
+          teachers={dashboard.teacher_summary}
         />
       </div>
     </div>
