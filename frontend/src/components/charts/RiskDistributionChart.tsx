@@ -7,11 +7,11 @@ import {
   Legend,
 } from "recharts";
 
-const data = [
-  { name: "High Risk", value: 38 },
-  { name: "Medium Risk", value: 112 },
-  { name: "Low Risk", value: 374 },
-];
+import type { RiskDistribution } from "../../features/admin/types/dashboard";
+
+interface Props {
+  riskDistribution: RiskDistribution;
+}
 
 const COLORS = [
   "#EF4444",
@@ -19,7 +19,25 @@ const COLORS = [
   "#22C55E",
 ];
 
-function RiskDistributionChart() {
+function RiskDistributionChart({
+  riskDistribution,
+}: Props) {
+
+  const data = [
+    {
+      name: "High Risk",
+      value: riskDistribution.high,
+    },
+    {
+      name: "Medium Risk",
+      value: riskDistribution.medium,
+    },
+    {
+      name: "Low Risk",
+      value: riskDistribution.low,
+    },
+  ];
+
   return (
     <div className="h-80 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -34,7 +52,7 @@ function RiskDistributionChart() {
             {data.map((_, index) => (
               <Cell
                 key={index}
-                fill={COLORS[index % COLORS.length]}
+                fill={COLORS[index]}
               />
             ))}
           </Pie>
