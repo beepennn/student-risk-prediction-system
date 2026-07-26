@@ -108,14 +108,14 @@ def generate_recommendation(
     db: Session,
     prediction,
 ):
-    if prediction.risk_level == "High":
+    if prediction.risk_level == "High Risk":
         title = "Immediate Intervention Required"
         description = (
             "Schedule counseling sessions and assign a mentor immediately."
         )
         priority = "High"
 
-    elif prediction.risk_level == "Medium":
+    elif prediction.risk_level == "Medium Risk":
         title = "Academic Monitoring Required"
         description = (
             "Monitor academic performance weekly and provide additional support."

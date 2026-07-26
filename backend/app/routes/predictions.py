@@ -167,7 +167,10 @@ def remove_prediction(
     )
 
 
-@router.post("/generate/{student_id}")
+@router.post(
+    "/generate/{student_id}",
+    response_model=PredictionResponse,
+)
 def generate_prediction(
     student_id: int,
     current_user: User = Depends(require_teacher),
@@ -175,15 +178,9 @@ def generate_prediction(
     db = SessionLocal()
 
     try:
-        academic = get_latest_academic_record(
-            db,
-            student_id,
-        )
+        academic = get_latest_academic_record(db, student_id)
 
-        if academic is None:
-            return {
-                "error": "No academic record found for this student."
-            }
+        print("Academic:", academic)
 
         student_features = {
             "attendance": academic.attendance,
@@ -191,11 +188,15 @@ def generate_prediction(
             "assignment_score": academic.assignment_score,
             "quiz_score": academic.quiz_score,
             "previous_gpa": academic.previous_gpa,
+            "semester": academic.semester,
+            "gender": academic.gender,
         }
 
-        prediction = predict_student_risk(
-            student_features
-        )
+        print("Student Features:", student_features)
+
+        prediction = predict_student_risk(student_features)
+
+        print("Prediction:", prediction)
 
         saved_prediction = save_prediction(
             db,
@@ -203,18 +204,29 @@ def generate_prediction(
             prediction,
         )
 
+        print("Saved Prediction:", saved_prediction)
+
         recommendation = generate_recommendation(
             db,
             saved_prediction,
         )
 
-        generate_notification(
+        print("Recommendation:", recommendation)
+
+        notification = generate_notification(
             db,
             student_id,
             recommendation,
         )
 
-        return saved_prediction
+        response = PredictionResponse.model_validate(saved_prediction)
+
+        return response
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise
 
     finally:
         db.close()
