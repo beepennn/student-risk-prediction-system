@@ -16,6 +16,7 @@ from app.services.prediction_service import (
     get_latest_prediction,
     get_admin_predictions,
     delete_prediction,
+    generate_prediction_for_student,
 )
 
 from app.core.dependencies import (
@@ -27,12 +28,6 @@ from app.core.dependencies import (
 from app.services.student_service import (
     get_student_by_user_id,
 )
-
-from app.services.ml_service import predict_student_risk
-from app.services.academic_service import get_latest_academic_record
-from app.services.prediction_service import save_prediction
-from app.services.recommendation_service import generate_recommendation
-from app.services.notification_service import generate_notification
 
 from app.models.user import User
 
@@ -173,60 +168,10 @@ def remove_prediction(
 )
 def generate_prediction(
     student_id: int,
+    db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    db = SessionLocal()
-
-    try:
-        academic = get_latest_academic_record(db, student_id)
-
-        print("Academic:", academic)
-
-        student_features = {
-            "attendance": academic.attendance,
-            "internal_marks": academic.internal_marks,
-            "assignment_score": academic.assignment_score,
-            "quiz_score": academic.quiz_score,
-            "previous_gpa": academic.previous_gpa,
-            "semester": academic.semester,
-            "gender": academic.gender,
-        }
-
-        print("Student Features:", student_features)
-
-        prediction = predict_student_risk(student_features)
-
-        print("Prediction:", prediction)
-
-        saved_prediction = save_prediction(
-            db,
-            student_id,
-            prediction,
-        )
-
-        print("Saved Prediction:", saved_prediction)
-
-        recommendation = generate_recommendation(
-            db,
-            saved_prediction,
-        )
-
-        print("Recommendation:", recommendation)
-
-        notification = generate_notification(
-            db,
-            student_id,
-            recommendation,
-        )
-
-        response = PredictionResponse.model_validate(saved_prediction)
-
-        return response
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise
-
-    finally:
-        db.close()
+    return generate_prediction_for_student(
+        db=db,
+        student_id=student_id,
+    )
