@@ -15,6 +15,7 @@ from app.services.ml_service import predict_student_risk
 from app.services.academic_service import get_latest_academic_record
 from app.services.recommendation_service import generate_recommendation
 from app.services.notification_service import generate_notification
+from app.services.shap_service import save_shap_explanations
 
 
 def get_predictions(
@@ -92,6 +93,8 @@ def save_prediction(
         low_probability=prediction_data["low_probability"],
         medium_probability=prediction_data["medium_probability"],
         high_probability=prediction_data["high_probability"],
+        confidence=prediction_data["confidence"],
+        confidence_percentage=prediction_data["confidence_percentage"],
     )
 
     db.add(prediction)
@@ -284,6 +287,12 @@ def generate_prediction_for_student(
         db,
         student_id,
         prediction,
+    )
+
+    save_shap_explanations(
+        db=db,
+        prediction_id=saved_prediction.id,
+        shap_values=prediction.get("shap_values", {}),
     )
 
     print("Saved Prediction:", saved_prediction)

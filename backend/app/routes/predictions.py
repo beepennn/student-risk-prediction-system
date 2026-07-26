@@ -28,6 +28,7 @@ from app.core.dependencies import (
 from app.services.student_service import (
     get_student_by_user_id,
 )
+from app.services.shap_service import save_shap_explanations
 
 from app.models.user import User
 
