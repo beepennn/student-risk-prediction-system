@@ -18,10 +18,7 @@ sys.path.append(str(ML_ROOT))
 # Import ML prediction functions
 # ----------------------------------------------------
 
-from src.models.predict import (
-    predict_student,
-    predict_proba,
-)
+from src.models.predict import predict_student_result
 
 # ----------------------------------------------------
 # Backend wrapper
@@ -32,15 +29,18 @@ def predict_student_risk(student_data: dict):
     Backend wrapper around the trained ML model.
     """
 
-    prediction = predict_student(student_data)
+    result = predict_student_result(student_data)
 
-    probabilities = predict_proba(student_data)
+    probabilities = result["probabilities"]
 
     return {
-        "risk_level": prediction,
+        "risk_level": result["risk_level"],
         "low_probability": probabilities.get("Low Risk", 0.0),
         "medium_probability": probabilities.get("Medium Risk", 0.0),
         "high_probability": probabilities.get("High Risk", 0.0),
+        "confidence": result["confidence"],
+        "confidence_percentage": result["confidence_percentage"],
+        "shap_values": result.get("shap_values", {})
     }
 
 if __name__ == "__main__":

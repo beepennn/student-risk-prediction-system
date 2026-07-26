@@ -16,6 +16,7 @@ from app.services.prediction_service import (
     get_latest_prediction,
     get_admin_predictions,
     delete_prediction,
+    generate_prediction_for_student,
 )
 
 from app.core.dependencies import (
@@ -28,11 +29,14 @@ from app.services.student_service import (
     get_student_by_user_id,
 )
 
-from app.services.ml_service import predict_student_risk
-from app.services.academic_service import get_latest_academic_record
-from app.services.prediction_service import save_prediction
-from app.services.recommendation_service import generate_recommendation
-from app.services.notification_service import generate_notification
+from app.services.shap_service import (
+    save_shap_explanations,
+    get_shap_explanations,
+)
+
+from app.schemas.shap_explanation import (
+    SHAPExplanationResponse,
+)
 
 from app.models.user import User
 
@@ -167,54 +171,30 @@ def remove_prediction(
     )
 
 
-@router.post("/generate/{student_id}")
+@router.post(
+    "/generate/{student_id}",
+    response_model=PredictionResponse,
+)
 def generate_prediction(
     student_id: int,
+    db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    db = SessionLocal()
+    return generate_prediction_for_student(
+        db=db,
+        student_id=student_id,
+    )
 
-    try:
-        academic = get_latest_academic_record(
-            db,
-            student_id,
-        )
-
-        if academic is None:
-            return {
-                "error": "No academic record found for this student."
-            }
-
-        student_features = {
-            "attendance": academic.attendance,
-            "internal_marks": academic.internal_marks,
-            "assignment_score": academic.assignment_score,
-            "quiz_score": academic.quiz_score,
-            "previous_gpa": academic.previous_gpa,
-        }
-
-        prediction = predict_student_risk(
-            student_features
-        )
-
-        saved_prediction = save_prediction(
-            db,
-            student_id,
-            prediction,
-        )
-
-        recommendation = generate_recommendation(
-            db,
-            saved_prediction,
-        )
-
-        generate_notification(
-            db,
-            student_id,
-            recommendation,
-        )
-
-        return saved_prediction
-
-    finally:
-        db.close()
+@router.get(
+    "/{prediction_id}/shap",
+    response_model=list[SHAPExplanationResponse],
+)
+def get_prediction_shap(
+    prediction_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_shap_explanations(
+        db=db,
+        prediction_id=prediction_id,
+    )

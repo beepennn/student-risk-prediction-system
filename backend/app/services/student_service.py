@@ -244,7 +244,7 @@ def get_student_dashboard(
         "latest_recommendation": (
             {
                 "priority": latest_recommendation.priority,
-                "recommendation_text": latest_recommendation.recommendation_text,
+                "recommendation_text": latest_recommendation.description,
             }
             if latest_recommendation
             else None

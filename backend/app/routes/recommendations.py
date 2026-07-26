@@ -6,6 +6,7 @@ from app.database.connection import SessionLocal
 from app.schemas.recommendation import (
     RecommendationCreate,
     RecommendationResponse,
+    RecommendationUpdateStatus,
 )
 
 from app.services.recommendation_service import (
@@ -15,6 +16,7 @@ from app.services.recommendation_service import (
     get_latest_recommendation,
     get_admin_recommendations,
     update_recommendation,
+    update_recommendation_status,
     delete_recommendation,
 )
 
@@ -169,6 +171,21 @@ def edit_recommendation(
         current_user.id,
     )
 
+@router.put(
+    "/{recommendation_id}/status",
+    response_model=RecommendationResponse,
+)
+def edit_recommendation_status(
+    recommendation_id: int,
+    recommendation_status: RecommendationUpdateStatus,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return update_recommendation_status(
+        db=db,
+        recommendation_id=recommendation_id,
+        status=recommendation_status.status,
+    )
 
 @router.delete("/{recommendation_id}")
 def remove_recommendation(
