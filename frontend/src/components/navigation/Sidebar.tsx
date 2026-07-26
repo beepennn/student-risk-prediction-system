@@ -1,72 +1,170 @@
-import { NavLink } from "react-router-dom";
 import {
-  FiHome,
-  FiUsers,
-  FiUser,
+  FiActivity,
   FiBarChart2,
-  FiBell,
-  FiSettings,
+  FiHome,
+  FiLogOut,
+  FiUser,
+  FiUsers,
 } from "react-icons/fi";
+import {
+  NavLink,
+  useLocation,
+} from "react-router-dom";
+
+import { useAuth } from "../../features/auth/context/useAuth";
+
+interface SidebarItem {
+  name: string;
+  path: string;
+  icon: React.ReactNode;
+}
 
 function Sidebar() {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+
+  const pathname = location.pathname;
+
+  const adminMenu: SidebarItem[] = [
+    {
+      name: "Dashboard",
+      path: "/admin",
+      icon: <FiHome size={20} />,
+    },
+  ];
+
+  const teacherMenu: SidebarItem[] = [
+    {
+      name: "Dashboard",
+      path: "/teacher",
+      icon: <FiHome size={20} />,
+    },
+    {
+      name: "Students",
+      path: "/teacher/students",
+      icon: <FiUsers size={20} />,
+    },
+    {
+      name: "Interventions",
+      path: "/teacher/interventions",
+      icon: <FiActivity size={20} />,
+    },
+  ];
+
+  const studentMenu: SidebarItem[] = [
+    {
+      name: "Dashboard",
+      path: "/student",
+      icon: <FiHome size={20} />,
+    },
+    {
+      name: "Profile",
+      path: "/student/profile",
+      icon: <FiUser size={20} />,
+    },
+    {
+      name: "Analytics",
+      path: "/student/analytics",
+      icon: <FiBarChart2 size={20} />,
+    },
+  ];
+
+  function getMenuItems() {
+    if (pathname.startsWith("/admin")) {
+      return adminMenu;
+    }
+
+    if (pathname.startsWith("/teacher")) {
+      return teacherMenu;
+    }
+
+    if (pathname.startsWith("/student")) {
+      return studentMenu;
+    }
+
+    return [];
+  }
+
+  function isMenuItemActive(path: string) {
+    if (
+      path === "/teacher" ||
+      path === "/student" ||
+      path === "/admin"
+    ) {
+      return pathname === path;
+    }
+
+    return pathname.startsWith(path);
+  }
+
+  const menuItems = getMenuItems();
+
   return (
-    <aside className="h-full w-64 bg-slate-800 text-white">
-      <nav className="p-4">
-        <ul className="space-y-2">
+    <aside className="flex min-h-screen w-64 flex-col bg-slate-900 text-white">
+      {/* Logo */}
+      <div className="border-b border-slate-700 px-6 py-6">
+        <h1 className="text-xl font-bold">
+          StudentAlert
+        </h1>
 
-          <li>
+        <p className="mt-1 text-sm text-slate-400">
+          Risk Prediction System
+        </p>
+      </div>
+
+      {/* User Information */}
+      <div className="border-b border-slate-700 px-6 py-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600">
+            <FiUser size={21} />
+          </div>
+
+          <div className="min-w-0">
+            <p className="truncate font-semibold">
+              {user?.full_name || user?.email || "User"}
+            </p>
+
+            <p className="truncate text-sm capitalize text-slate-400">
+              {user?.role || "Account"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 space-y-2 px-4 py-6">
+        {menuItems.map((item) => {
+          const active = isMenuItemActive(item.path);
+
+          return (
             <NavLink
-              to="/admin"
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2 ${
-                  isActive
-                    ? "bg-blue-600 text-white"
-                    : "hover:bg-slate-700"
-                }`
-              }
+              key={item.path}
+              to={item.path}
+              className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition ${
+                active
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
+              }`}
             >
-              <FiHome />
-              Dashboard
+              {item.icon}
+
+              <span>{item.name}</span>
             </NavLink>
-          </li>
-
-          <li>
-            <NavLink
-              to="/student"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-700"
-            >
-              <FiUsers />
-              Students
-            </NavLink>
-          </li>
-
-          <li>
-            <NavLink
-              to="/teacher"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-700"
-            >
-              <FiUser />
-              Teachers
-            </NavLink>
-          </li>
-
-          <li className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-700">
-            <FiBarChart2 />
-            Analytics
-          </li>
-
-          <li className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-700">
-            <FiBell />
-            Notifications
-          </li>
-
-          <li className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-700">
-            <FiSettings />
-            Settings
-          </li>
-
-        </ul>
+          );
+        })}
       </nav>
+
+      {/* Logout */}
+      <div className="border-t border-slate-700 p-4">
+        <button
+          type="button"
+          onClick={logout}
+          className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-red-600 hover:text-white"
+        >
+          <FiLogOut size={20} />
+          Logout
+        </button>
+      </div>
     </aside>
   );
 }
