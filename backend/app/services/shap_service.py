@@ -37,3 +37,20 @@ def save_shap_explanations(
         )
         .count()
     )
+
+def get_shap_explanations(
+    db: Session,
+    prediction_id: int,
+):
+    """
+    Retrieve all SHAP explanations for a prediction.
+    """
+
+    return (
+        db.query(SHAPExplanation)
+        .filter(
+            SHAPExplanation.prediction_id == prediction_id
+        )
+        .order_by(SHAPExplanation.id)
+        .all()
+    )

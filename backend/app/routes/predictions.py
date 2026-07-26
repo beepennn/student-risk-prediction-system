@@ -28,7 +28,15 @@ from app.core.dependencies import (
 from app.services.student_service import (
     get_student_by_user_id,
 )
-from app.services.shap_service import save_shap_explanations
+
+from app.services.shap_service import (
+    save_shap_explanations,
+    get_shap_explanations,
+)
+
+from app.schemas.shap_explanation import (
+    SHAPExplanationResponse,
+)
 
 from app.models.user import User
 
@@ -175,4 +183,18 @@ def generate_prediction(
     return generate_prediction_for_student(
         db=db,
         student_id=student_id,
+    )
+
+@router.get(
+    "/{prediction_id}/shap",
+    response_model=list[SHAPExplanationResponse],
+)
+def get_prediction_shap(
+    prediction_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_shap_explanations(
+        db=db,
+        prediction_id=prediction_id,
     )

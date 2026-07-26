@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from fastapi import HTTPException
+
 from sqlalchemy.orm import Session
 
 from app.models.recommendation import Recommendation
@@ -134,6 +137,7 @@ def generate_recommendation(
         title=title,
         description=description,
         priority=priority,
+        status="Pending",
     )
 
     db.add(recommendation)
@@ -289,3 +293,34 @@ def delete_recommendation(
     return success_response(
         message="Recommendation deleted successfully."
     )
+
+def update_recommendation_status(
+    db: Session,
+    recommendation_id: int,
+    status: str,
+):
+    recommendation = (
+        db.query(Recommendation)
+        .filter(
+            Recommendation.id == recommendation_id
+        )
+        .first()
+    )
+
+    if recommendation is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Recommendation not found.",
+        )
+
+    recommendation.status = status
+
+    if status == "Completed":
+        recommendation.completed_at = datetime.utcnow()
+    else:
+        recommendation.completed_at = None
+
+    db.commit()
+    db.refresh(recommendation)
+
+    return recommendation
