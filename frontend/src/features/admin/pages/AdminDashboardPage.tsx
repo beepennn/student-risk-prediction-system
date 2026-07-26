@@ -1,19 +1,20 @@
 import { useEffect, useState } from "react";
-
 import {
+  FiAlertTriangle,
+  FiBell,
+  FiClipboard,
   FiUsers,
-  FiUserCheck,
-  FiBarChart2,
-  FiActivity,
 } from "react-icons/fi";
 
 import StatCard from "../../../components/cards/StatCard";
+import RiskDistributionChart from "../../../components/charts/RiskDistributionChart";
+import RecentActivityTable from "../../../components/tables/RecentActivityTable";
+import DepartmentSummaryTable from "../../../components/tables/DepartmentSummaryTable";
+import SemesterSummaryTable from "../../../components/tables/SemesterSummaryTable";
+import TeacherSummaryTable from "../../../components/tables/TeacherSummaryTable";
 
-import AdminRiskChart from "../components/AdminRiskChart";
-import AdminRecentActivity from "../components/AdminRecentActivity";
-
-import { getAdminDashboard } from "../services/adminService";
-import type { AdminDashboardResponse } from "../types/dashboard";
+import { getDashboardData } from "../services/dashboardService";
+import type { DashboardResponse } from "../types/dashboard";
 
 import { useAuth } from "../../auth/context/useAuth";
 
@@ -21,25 +22,24 @@ function AdminDashboardPage() {
   const { token } = useAuth();
 
   const [dashboard, setDashboard] =
-    useState<AdminDashboardResponse | null>(null);
+    useState<DashboardResponse | null>(null);
 
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState("");
 
   useEffect(() => {
     async function fetchDashboard() {
       if (!token) {
-        setError("No authentication token found.");
+        setError("You are not authenticated. Please log in again.");
         setLoading(false);
         return;
       }
 
       try {
-        const data = await getAdminDashboard(token);
+        const data = await getDashboardData(token);
         setDashboard(data);
-      } catch (err) {
-        console.error(err);
+      } catch (error) {
+        console.error("Dashboard error:", error);
         setError("Failed to load dashboard.");
       } finally {
         setLoading(false);
@@ -50,28 +50,20 @@ function AdminDashboardPage() {
   }, [token]);
 
   if (loading) {
-    return (
-      <div className="p-8 text-center text-lg">
-        Loading dashboard...
-      </div>
-    );
+    return <p>Loading dashboard...</p>;
   }
 
   if (error) {
-    return (
-      <div className="p-8 text-center text-red-600">
-        {error}
-      </div>
-    );
+    return <p className="text-red-600">{error}</p>;
   }
 
   if (!dashboard) {
-    return null;
+    return <p>No dashboard data available.</p>;
   }
 
   return (
     <div className="space-y-8">
-      {/* Heading */}
+      {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold">
           Admin Dashboard
@@ -85,7 +77,7 @@ function AdminDashboardPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          title="Total Students"
+          title="Students"
           value={dashboard.summary.total_students}
           icon={<FiUsers size={30} />}
         />
@@ -93,19 +85,31 @@ function AdminDashboardPage() {
         <StatCard
           title="Teachers"
           value={dashboard.summary.total_teachers}
-          icon={<FiUserCheck size={30} />}
+          icon={<FiUsers size={30} />}
         />
 
         <StatCard
           title="Predictions"
           value={dashboard.summary.total_predictions}
-          icon={<FiBarChart2 size={30} />}
+          icon={<FiAlertTriangle size={30} />}
+        />
+
+        <StatCard
+          title="Notifications"
+          value={dashboard.summary.total_notifications}
+          icon={<FiBell size={30} />}
+        />
+
+        <StatCard
+          title="Recommendations"
+          value={dashboard.summary.total_recommendations}
+          icon={<FiClipboard size={30} />}
         />
 
         <StatCard
           title="Interventions"
           value={dashboard.summary.total_interventions}
-          icon={<FiActivity size={30} />}
+          icon={<FiClipboard size={30} />}
         />
       </div>
 
@@ -115,10 +119,8 @@ function AdminDashboardPage() {
           Risk Distribution
         </h2>
 
-        <AdminRiskChart
-          high={dashboard.risk_distribution.high}
-          medium={dashboard.risk_distribution.medium}
-          low={dashboard.risk_distribution.low}
+        <RiskDistributionChart
+          riskDistribution={dashboard.risk_distribution}
         />
       </div>
 
@@ -128,9 +130,41 @@ function AdminDashboardPage() {
           Recent Activity
         </h2>
 
-        <AdminRecentActivity
-          prediction={dashboard.recent_activity.latest_prediction}
-          intervention={dashboard.recent_activity.latest_intervention}
+        <RecentActivityTable
+          activity={dashboard.recent_activity}
+        />
+      </div>
+
+      {/* Department Summary */}
+      <div className="rounded-xl bg-white p-6 shadow-md">
+        <h2 className="mb-4 text-xl font-semibold">
+          Department Summary
+        </h2>
+
+        <DepartmentSummaryTable
+          departments={dashboard.department_summary}
+        />
+      </div>
+
+      {/* Semester Summary */}
+      <div className="rounded-xl bg-white p-6 shadow-md">
+        <h2 className="mb-4 text-xl font-semibold">
+          Semester Summary
+        </h2>
+
+        <SemesterSummaryTable
+          semesters={dashboard.semester_summary}
+        />
+      </div>
+
+      {/* Teacher Summary */}
+      <div className="rounded-xl bg-white p-6 shadow-md">
+        <h2 className="mb-4 text-xl font-semibold">
+          Teacher Summary
+        </h2>
+
+        <TeacherSummaryTable
+          teachers={dashboard.teacher_summary}
         />
       </div>
     </div>

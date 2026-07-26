@@ -37,24 +37,21 @@ export interface TeacherSummary {
   students_handled: number;
 }
 
-export interface LatestPrediction {
-  student_id: number;
-  risk_level: string;
-  date: string;
-}
-
-export interface LatestIntervention {
-  student_id: number;
-  teacher_id: number;
-  date: string;
-}
-
 export interface RecentActivity {
-  latest_prediction: LatestPrediction;
-  latest_intervention: LatestIntervention;
+  latest_prediction: {
+    student_id: number;
+    risk_level: string;
+    date: string;
+  };
+
+  latest_intervention: {
+    student_id: number;
+    teacher_id: number;
+    date: string;
+  };
 }
 
-export interface AdminDashboardResponse {
+export interface DashboardResponse {
   summary: DashboardSummary;
   risk_distribution: RiskDistribution;
   department_summary: DepartmentSummary[];
