@@ -1,5 +1,6 @@
 import pandas as pd
 import joblib
+import shap
 
 from pathlib import Path
 
@@ -38,6 +39,13 @@ def load_model():
     )
 
     return model
+
+def get_preprocessor(model):
+    return model.named_steps["preprocessor"]
+
+
+def get_classifier(model):
+    return model.named_steps["classifier"]
 
 
 # ============================================================
@@ -221,6 +229,45 @@ def predict_proba(
 
     return probability_result
 
+# ============================================================
+# GENERATE SHAP VALUES
+# ============================================================
+
+def generate_shap_values(student_features):
+    """
+    Generate SHAP values for a single prediction.
+    """
+
+    model = load_model()
+
+    student_data = prepare_student_data(student_features)
+
+    preprocessor = get_preprocessor(model)
+    classifier = get_classifier(model)
+
+    transformed_data = preprocessor.transform(student_data)
+
+    explainer = shap.TreeExplainer(classifier)
+
+    shap_values = explainer.shap_values(transformed_data)
+
+    predicted_class = classifier.predict(transformed_data)[0]
+
+    class_index = list(classifier.classes_).index(predicted_class)
+
+    feature_names = preprocessor.get_feature_names_out()
+
+    # SHAP 0.52 format:
+    # (samples, features, classes)
+    class_shap_values = shap_values[0, :, class_index]
+
+    return {
+        feature_name: {
+            "feature_value": float(transformed_data[0, index]),
+            "shap_value": float(class_shap_values[index]),
+        }
+        for index, feature_name in enumerate(feature_names)
+    }
 
 # ============================================================
 # 5. COMPLETE PREDICTION
@@ -256,27 +303,15 @@ def predict_student_result(
 
     )
 
+    shap_values = generate_shap_values(student_features)
 
     result = {
-
         "risk_level": risk_level,
-
         "probabilities": probabilities,
-
-        "confidence": float(
-
-            confidence
-
-        ),
-
-        "confidence_percentage": float(
-
-            confidence * 100
-
-        )
-
+        "confidence": float(confidence),
+        "confidence_percentage": float(confidence * 100),
+        "shap_values": shap_values,
     }
-
 
     return result
 

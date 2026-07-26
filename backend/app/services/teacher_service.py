@@ -110,13 +110,13 @@ def get_teacher_dashboard(
             "prediction_date": prediction.prediction_date,
         }
 
-        if prediction.risk_level == "High":
+        if prediction.risk_level == "High Risk":
             high_risk_students.append(student_info)
 
-        elif prediction.risk_level == "Medium":
+        elif prediction.risk_level == "Medium Risk":
             medium_risk_students.append(student_info)
 
-        else:
+        elif prediction.risk_level == "Low Risk":
             low_risk_students.append(student_info)
 
         intervention = (
@@ -142,12 +142,31 @@ def get_teacher_dashboard(
                 }
             )
 
+    total_predictions = db.query(Prediction).count()
+
     total_interventions = (
         db.query(Intervention)
         .filter(
             Intervention.teacher_id == teacher_id
         )
         .count()
+    )
+
+    students_without_intervention_count = len(
+        students_without_intervention
+    )
+
+    students_with_intervention = (
+        total_students - students_without_intervention_count
+    )
+
+    intervention_rate = (
+        round(
+            (students_with_intervention / total_students) * 100,
+            2,
+        )
+        if total_students > 0
+        else 0
     )
 
     recent_interventions = (
@@ -194,7 +213,11 @@ def get_teacher_dashboard(
             "high_risk_students": len(high_risk_students),
             "medium_risk_students": len(medium_risk_students),
             "low_risk_students": len(low_risk_students),
+            "total_predictions": total_predictions,
             "total_interventions": total_interventions,
+            "students_without_intervention": students_without_intervention_count,
+            "students_with_intervention": students_with_intervention,
+            "intervention_rate": intervention_rate,
         },
 
         "high_risk_students": high_risk_students,

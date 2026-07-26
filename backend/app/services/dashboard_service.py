@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from app.models.student import Student
 from app.models.prediction import Prediction
 from app.models.notification import Notification
+from app.models.academic_record import AcademicRecord
+from app.models.recommendation import Recommendation
 
 
 def get_teacher_dashboard(db: Session):
@@ -10,19 +12,19 @@ def get_teacher_dashboard(db: Session):
 
     high_risk = (
         db.query(Prediction)
-        .filter(Prediction.risk_level == "High")
+        .filter(Prediction.risk_level == "High Risk")
         .count()
     )
 
     medium_risk = (
         db.query(Prediction)
-        .filter(Prediction.risk_level == "Medium")
+        .filter(Prediction.risk_level == "Medium Risk")
         .count()
     )
 
     low_risk = (
         db.query(Prediction)
-        .filter(Prediction.risk_level == "Low")
+        .filter(Prediction.risk_level == "Low Risk")
         .count()
     )
 
@@ -47,4 +49,60 @@ def get_teacher_dashboard(db: Session):
         "low_risk_students": low_risk,
         "recent_predictions": recent_predictions,
         "recent_notifications": recent_notifications,
+    }
+
+def get_student_dashboard(
+    db: Session,
+    student_id: int,
+):
+    student = (
+        db.query(Student)
+        .filter(Student.id == student_id)
+        .first()
+    )
+
+    academic = (
+        db.query(AcademicRecord)
+        .filter(
+            AcademicRecord.student_id == student_id
+        )
+        .order_by(AcademicRecord.id.desc())
+        .first()
+    )
+
+    prediction = (
+        db.query(Prediction)
+        .filter(
+            Prediction.student_id == student_id
+        )
+        .order_by(Prediction.id.desc())
+        .first()
+    )
+
+    recommendation = None
+
+    if prediction:
+        recommendation = (
+            db.query(Recommendation)
+            .filter(
+                Recommendation.prediction_id == prediction.id
+            )
+            .order_by(Recommendation.id.desc())
+            .first()
+        )
+
+    notifications = (
+        db.query(Notification)
+        .filter(
+            Notification.student_id == student_id
+        )
+        .all()
+    )
+
+    return {
+        "student": student,
+        "academic": academic,
+        "prediction": prediction,
+        "recommendation": recommendation,
+        "notifications": notifications,
     }

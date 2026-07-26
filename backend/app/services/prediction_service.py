@@ -289,6 +289,13 @@ def generate_prediction_for_student(
         prediction,
     )
 
+    shap_dict = prediction.get("shap_values", {})
+    if shap_dict:
+        first_key = next(iter(shap_dict))
+        print(first_key, shap_dict[first_key])
+    else:
+        print("No SHAP values received")
+
     save_shap_explanations(
         db=db,
         prediction_id=saved_prediction.id,

@@ -8,21 +8,8 @@ def save_shap_explanations(
     prediction_id: int,
     shap_values: dict,
 ):
-    """
-    Save SHAP explanations for a prediction.
-
-    Expected format:
-
-    {
-        "attendance": {
-            "feature_value": 92,
-            "shap_value": -0.41
-        },
-        ...
-    }
-    """
-
     if not shap_values:
+        print("No SHAP values received.")
         return
 
     for feature_name, explanation in shap_values.items():
@@ -41,3 +28,12 @@ def save_shap_explanations(
         db.add(shap_record)
 
     db.commit()
+
+
+    saved = (
+        db.query(SHAPExplanation)
+        .filter(
+            SHAPExplanation.prediction_id == prediction_id
+        )
+        .count()
+    )
