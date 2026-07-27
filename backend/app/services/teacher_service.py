@@ -14,7 +14,11 @@ from app.services.prediction_service import get_latest_prediction
 from app.services.recommendation_service import get_latest_recommendation
 
 from fastapi import status
-from app.schemas.teacher import TeacherCreate
+from app.schemas.teacher import (
+    TeacherCreate,
+    TeacherUpdate,
+)
+
 from app.core.security import hash_password
 
 def get_student_profile(
@@ -461,3 +465,83 @@ def create_teacher(
     db.refresh(new_teacher)
 
     return new_teacher
+
+def get_all_teachers(db: Session):
+    teachers = (
+        db.query(User)
+        .filter(User.role == "Teacher")
+        .order_by(User.id.desc())
+        .all()
+    )
+
+    return teachers
+
+def update_teacher(
+    db: Session,
+    teacher_id: int,
+    teacher: TeacherUpdate,
+):
+    db_teacher = (
+        db.query(User)
+        .filter(
+            User.id == teacher_id,
+            User.role == "Teacher",
+        )
+        .first()
+    )
+
+    if not db_teacher:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Teacher not found.",
+        )
+
+    email_exists = (
+        db.query(User)
+        .filter(
+            User.email == teacher.email,
+            User.id != teacher_id,
+        )
+        .first()
+    )
+
+    if email_exists:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered.",
+        )
+
+    db_teacher.full_name = teacher.full_name
+    db_teacher.email = teacher.email
+    db_teacher.is_active = teacher.is_active
+
+    db.commit()
+    db.refresh(db_teacher)
+
+    return db_teacher
+
+def delete_teacher(
+    db: Session,
+    teacher_id: int,
+):
+    teacher = (
+        db.query(User)
+        .filter(
+            User.id == teacher_id,
+            User.role == "Teacher",
+        )
+        .first()
+    )
+
+    if not teacher:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Teacher not found.",
+        )
+
+    db.delete(teacher)
+    db.commit()
+
+    return {
+        "message": "Teacher deleted successfully."
+    }

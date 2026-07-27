@@ -14,6 +14,7 @@ from app.schemas.teacher import (
     StudentProfileResponse,
     TeacherCreate,
     TeacherResponse,
+    TeacherUpdate,
 )
 
 from app.services.teacher_service import (
@@ -24,6 +25,9 @@ from app.services.teacher_service import (
     get_teacher_analytics,
     get_teacher_students,
     create_teacher,
+    get_all_teachers,
+    update_teacher,
+    delete_teacher,
 )
 
 from app.services.intervention_service import (
@@ -47,6 +51,7 @@ def get_db():
     finally:
         db.close()
 
+
 @router.post(
     "",
     response_model=TeacherResponse,
@@ -59,6 +64,45 @@ def add_teacher(
     return create_teacher(
         db,
         teacher,
+    )
+
+
+@router.get(
+    "",
+    response_model=list[TeacherResponse],
+)
+def read_teachers(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return get_all_teachers(db)
+
+
+@router.put(
+    "/{teacher_id}",
+    response_model=TeacherResponse,
+)
+def edit_teacher(
+    teacher_id: int,
+    teacher: TeacherUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return update_teacher(
+        db=db,
+        teacher_id=teacher_id,
+        teacher=teacher,
+    )
+
+@router.delete("/{teacher_id}")
+def remove_teacher(
+    teacher_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return delete_teacher(
+        db=db,
+        teacher_id=teacher_id,
     )
 
 
@@ -76,6 +120,7 @@ def read_student_profile(
         student_id,
     )
 
+
 @router.get("/dashboard")
 def read_teacher_dashboard(
     db: Session = Depends(get_db),
@@ -86,6 +131,7 @@ def read_teacher_dashboard(
         teacher_id=current_user.id,
     )
 
+
 @router.get("/interventions")
 def read_teacher_interventions(
     db: Session = Depends(get_db),
@@ -95,6 +141,7 @@ def read_teacher_interventions(
         db,
         current_user.id,
     )
+
 
 @router.post("/students/{student_id}/intervene")
 def intervene_student(
@@ -110,6 +157,7 @@ def intervene_student(
         action_taken=request.action_taken,
         remarks=request.remarks,
     )
+
 
 @router.get("/students")
 def teacher_students(
@@ -134,6 +182,7 @@ def teacher_students(
         order=order,
     )
 
+
 @router.get("/students/search")
 def search_student(
     q: str,
@@ -144,6 +193,7 @@ def search_student(
         db,
         q,
     )
+
 
 @router.get("/analytics")
 def teacher_analytics(
