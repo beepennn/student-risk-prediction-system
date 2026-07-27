@@ -31,3 +31,8 @@ class TeacherResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class TeacherUpdate(BaseModel):
+    full_name: str
+    email: EmailStr
+    is_active: bool
