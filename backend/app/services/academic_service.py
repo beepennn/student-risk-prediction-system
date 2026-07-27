@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.academic_record import AcademicRecord
+from app.models.student import Student
 from app.schemas.academic_record import AcademicRecordCreate
 
 
@@ -32,6 +33,33 @@ def create_academic_record(
     db: Session,
     academic_record: AcademicRecordCreate,
 ):
+    student = (
+        db.query(Student)
+        .filter(Student.id == academic_record.student_id)
+        .first()
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student not found.",
+        )
+
+    existing_record = (
+        db.query(AcademicRecord)
+        .filter(
+            AcademicRecord.student_id == academic_record.student_id,
+            AcademicRecord.semester == academic_record.semester,
+        )
+        .first()
+    )
+
+    if existing_record:
+        raise HTTPException(
+            status_code=400,
+            detail="Academic record already exists for this semester.",
+        )
+
     db_record = AcademicRecord(
         **academic_record.model_dump()
     )
@@ -49,8 +77,12 @@ def get_latest_academic_record(
 ):
     record = (
         db.query(AcademicRecord)
-        .filter(AcademicRecord.student_id == student_id)
-        .order_by(AcademicRecord.created_at.desc())
+        .filter(
+            AcademicRecord.student_id == student_id
+        )
+        .order_by(
+            AcademicRecord.created_at.desc()
+        )
         .first()
     )
 

@@ -66,18 +66,10 @@ def get_my_academic_record(
             detail="Student profile not found.",
         )
 
-    record = get_latest_academic_record(
+    return get_latest_academic_record(
         db,
         student.id,
     )
-
-    if record is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Academic record not found.",
-        )
-
-    return record
 
 @router.get("/{record_id}", response_model=AcademicRecordResponse)
 def read_academic_record(
