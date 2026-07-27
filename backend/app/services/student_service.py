@@ -53,7 +53,10 @@ def get_students(
     )
 
 
-def get_student(db: Session, student_id: int):
+def get_student(
+    db: Session,
+    student_id: int,
+):
     student = (
         db.query(Student)
         .filter(Student.id == student_id)
@@ -68,11 +71,48 @@ def get_student(db: Session, student_id: int):
 
     return student
 
+
 def create_student(
     db: Session,
     student: StudentCreate,
     admin_id: int,
 ):
+    db_user = (
+        db.query(User)
+        .filter(User.id == student.user_id)
+        .first()
+    )
+
+    if db_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found.",
+        )
+
+    existing_profile = (
+        db.query(Student)
+        .filter(Student.user_id == student.user_id)
+        .first()
+    )
+
+    if existing_profile:
+        raise HTTPException(
+            status_code=400,
+            detail="Student profile already exists for this user.",
+        )
+
+    existing_student = (
+        db.query(Student)
+        .filter(Student.roll_number == student.roll_number)
+        .first()
+    )
+
+    if existing_student:
+        raise HTTPException(
+            status_code=400,
+            detail="Roll number already exists.",
+        )
+
     db_student = Student(
         **student.model_dump()
     )
@@ -91,6 +131,7 @@ def create_student(
 
     return db_student
 
+
 def update_student(
     db: Session,
     student_id: int,
@@ -108,6 +149,52 @@ def update_student(
             status_code=404,
             detail="Student not found.",
         )
+
+    if (
+        "roll_number" in updated_data
+        and updated_data["roll_number"] != db_student.roll_number
+    ):
+        existing_student = (
+            db.query(Student)
+            .filter(
+                Student.roll_number == updated_data["roll_number"]
+            )
+            .first()
+        )
+
+        if existing_student:
+            raise HTTPException(
+                status_code=400,
+                detail="Roll number already exists.",
+            )
+
+    if (
+        "user_id" in updated_data
+        and updated_data["user_id"] != db_student.user_id
+    ):
+        db_user = (
+            db.query(User)
+            .filter(User.id == updated_data["user_id"])
+            .first()
+        )
+
+        if db_user is None:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found.",
+            )
+
+        existing_profile = (
+            db.query(Student)
+            .filter(Student.user_id == updated_data["user_id"])
+            .first()
+        )
+
+        if existing_profile:
+            raise HTTPException(
+                status_code=400,
+                detail="Student profile already exists for this user.",
+            )
 
     for key, value in updated_data.items():
         setattr(db_student, key, value)
@@ -160,6 +247,7 @@ def delete_student(
         message="Student deleted successfully."
     )
 
+
 def get_student_by_user_id(
     db: Session,
     user_id: int,
@@ -169,6 +257,7 @@ def get_student_by_user_id(
         .filter(Student.user_id == user_id)
         .first()
     )
+
 
 def get_student_dashboard(
     db: Session,
@@ -223,12 +312,15 @@ def get_student_dashboard(
     return {
         "student": {
             "id": student.id,
-            "full_name": ( student.user.full_name if student.user else None ),
+            "full_name": (
+                student.user.full_name
+                if student.user
+                else None
+            ),
             "roll_number": student.roll_number,
             "department": student.department,
             "semester": student.semester,
         },
-
         "latest_prediction": (
             {
                 "risk_level": latest_prediction.risk_level,
@@ -240,7 +332,6 @@ def get_student_dashboard(
             if latest_prediction
             else None
         ),
-
         "latest_recommendation": (
             {
                 "priority": latest_recommendation.priority,
@@ -249,20 +340,39 @@ def get_student_dashboard(
             if latest_recommendation
             else None
         ),
-
         "academic_summary": {
-            "attendance": latest_record.attendance if latest_record else None,
-            "internal_marks": latest_record.internal_marks if latest_record else None,
-            "assignment_score": latest_record.assignment_score if latest_record else None,
-            "quiz_score": latest_record.quiz_score if latest_record else None,
-            "previous_gpa": latest_record.previous_gpa if latest_record else None,
+            "attendance": (
+                latest_record.attendance
+                if latest_record
+                else None
+            ),
+            "internal_marks": (
+                latest_record.internal_marks
+                if latest_record
+                else None
+            ),
+            "assignment_score": (
+                latest_record.assignment_score
+                if latest_record
+                else None
+            ),
+            "quiz_score": (
+                latest_record.quiz_score
+                if latest_record
+                else None
+            ),
+            "previous_gpa": (
+                latest_record.previous_gpa
+                if latest_record
+                else None
+            ),
         },
-
         "notifications": {
             "total": len(notifications),
             "unread": unread_notifications,
         },
     }
+
 
 def get_student_analytics(
     db: Session,
@@ -304,11 +414,9 @@ def get_student_analytics(
     latest_recommendation = None
 
     if latest_prediction:
-        latest_recommendation = (
-            get_latest_recommendation(
-                db,
-                latest_prediction.id,
-            )
+        latest_recommendation = get_latest_recommendation(
+            db,
+            latest_prediction.id,
         )
 
     notifications = get_student_notifications(
@@ -355,7 +463,6 @@ def get_student_analytics(
             ),
             "total_notifications": len(notifications),
         },
-
         "history": [
             {
                 "semester": record.semester,

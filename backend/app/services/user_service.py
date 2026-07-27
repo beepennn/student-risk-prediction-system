@@ -36,11 +36,24 @@ def create_user(
     user: UserCreate,
     admin_id: int,
 ):
+    existing_user = (
+        db.query(User)
+        .filter(User.email == user.email)
+        .first()
+    )
+
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered.",
+        )
+
     user_data = user.model_dump()
 
     user_data["password_hash"] = hash_password(
-        user.password_hash
+        user.password
     )
+    user_data.pop("password")
 
     db_user = User(**user_data)
 
@@ -77,7 +90,28 @@ def update_user(
             detail="User not found.",
         )
 
-    if "password_hash" in updated_data:
+    if (
+        "email" in updated_data
+        and updated_data["email"] != db_user.email
+    ):
+        existing_user = (
+            db.query(User)
+            .filter(User.email == updated_data["email"])
+            .first()
+        )
+
+        if existing_user:
+            raise HTTPException(
+                status_code=400,
+                detail="Email already registered.",
+            )
+
+    if "password" in updated_data:
+        updated_data["password_hash"] = hash_password(
+            updated_data.pop("password")
+        )
+
+    elif "password_hash" in updated_data:
         updated_data["password_hash"] = hash_password(
             updated_data["password_hash"]
         )
