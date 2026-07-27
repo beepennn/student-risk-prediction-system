@@ -42,29 +42,10 @@ class StudentDashboardResponse(BaseModel):
     academic_summary: Optional[AcademicSummary] = None
 
     notifications: NotificationSummary
-class DashboardSummaryResponse(BaseModel):
-    total_students: int
-    high_risk: int
-    medium_risk: int
-    low_risk: int
+
 class InterventionSummaryResponse(BaseModel):
     total_interventions: int
 
-class DepartmentSummaryResponse(BaseModel):
-    department: str
-    total_students: int
-
-class SemesterSummaryResponse(BaseModel):
-    semester: int
-    total_students: int
-
-class LatestPredictionResponse(BaseModel):
-    student_id: int
-    full_name: str
-    roll_number: str
-    risk_level: str
-    high_probability: float
-    prediction_date: str
 class DepartmentSummaryResponse(BaseModel):
     department: str
     total_students: int
