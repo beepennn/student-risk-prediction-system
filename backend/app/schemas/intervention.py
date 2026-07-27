@@ -13,7 +13,8 @@ class InterventionResponse(InterventionCreate):
 
     class Config:
         from_attributes = True
-        
+
+
 class TeacherInterventionRequest(BaseModel):
     action_taken: str
-    remarks: str
+    remarks: str | None = None

@@ -1,12 +1,16 @@
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from app.models.intervention import Intervention
+from app.models.student import Student
+from app.models.user import User
+
 from app.schemas.intervention import InterventionCreate
 
 from app.services.audit_service import create_audit_log
 from app.core.api_response import success_response
+
 
 def get_interventions(
     db: Session,
@@ -71,6 +75,30 @@ def create_intervention(
     intervention: InterventionCreate,
     admin_id: int,
 ):
+    student = (
+        db.query(Student)
+        .filter(Student.id == intervention.student_id)
+        .first()
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student not found.",
+        )
+
+    teacher = (
+        db.query(User)
+        .filter(User.id == intervention.teacher_id)
+        .first()
+    )
+
+    if teacher is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Teacher not found.",
+        )
+
     db_intervention = Intervention(
         **intervention.model_dump()
     )
@@ -88,6 +116,7 @@ def create_intervention(
     )
 
     return db_intervention
+
 
 def get_student_interventions(
     db: Session,
@@ -127,7 +156,7 @@ def create_teacher_intervention(
     teacher_id: int,
     student_id: int,
     action_taken: str,
-    remarks: str,
+    remarks: str | None,
 ):
     intervention = Intervention(
         student_id=student_id,
@@ -141,6 +170,7 @@ def create_teacher_intervention(
     db.refresh(intervention)
 
     return intervention
+
 
 def update_intervention(
     db: Session,
@@ -162,8 +192,36 @@ def update_intervention(
             detail="Intervention not found.",
         )
 
+    student = (
+        db.query(Student)
+        .filter(Student.id == intervention.student_id)
+        .first()
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student not found.",
+        )
+
+    teacher = (
+        db.query(User)
+        .filter(User.id == intervention.teacher_id)
+        .first()
+    )
+
+    if teacher is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Teacher not found.",
+        )
+
     for key, value in intervention.model_dump().items():
-        setattr(db_intervention, key, value)
+        setattr(
+            db_intervention,
+            key,
+            value,
+        )
 
     db.commit()
     db.refresh(db_intervention)
@@ -177,6 +235,7 @@ def update_intervention(
     )
 
     return db_intervention
+
 
 def delete_intervention(
     db: Session,
@@ -212,13 +271,16 @@ def delete_intervention(
         message="Intervention deleted successfully."
     )
 
-def get_intervention_statistics(db: Session):
+
+def get_intervention_statistics(
+    db: Session,
+):
     total = db.query(Intervention).count()
 
     teacher_count = (
         db.query(
             Intervention.teacher_id,
-            func.count(Intervention.id)
+            func.count(Intervention.id),
         )
         .group_by(Intervention.teacher_id)
         .all()
@@ -227,7 +289,7 @@ def get_intervention_statistics(db: Session):
     student_count = (
         db.query(
             Intervention.student_id,
-            func.count(Intervention.id)
+            func.count(Intervention.id),
         )
         .group_by(Intervention.student_id)
         .all()
