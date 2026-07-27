@@ -324,3 +324,67 @@ def update_recommendation_status(
     db.refresh(recommendation)
 
     return recommendation
+
+def get_recommendation_statistics(
+    db: Session,
+):
+    total = db.query(Recommendation).count()
+
+    pending = (
+        db.query(Recommendation)
+        .filter(
+            Recommendation.status == "Pending"
+        )
+        .count()
+    )
+
+    completed = (
+        db.query(Recommendation)
+        .filter(
+            Recommendation.status == "Completed"
+        )
+        .count()
+    )
+
+    high_priority = (
+        db.query(Recommendation)
+        .filter(
+            Recommendation.priority == "High"
+        )
+        .count()
+    )
+
+    medium_priority = (
+        db.query(Recommendation)
+        .filter(
+            Recommendation.priority == "Medium"
+        )
+        .count()
+    )
+
+    low_priority = (
+        db.query(Recommendation)
+        .filter(
+            Recommendation.priority == "Low"
+        )
+        .count()
+    )
+
+    completion_rate = (
+        (completed / total) * 100
+        if total > 0
+        else 0
+    )
+
+    return {
+        "total": total,
+        "pending": pending,
+        "completed": completed,
+        "high_priority": high_priority,
+        "medium_priority": medium_priority,
+        "low_priority": low_priority,
+        "completion_rate": round(
+            completion_rate,
+            2,
+        ),
+    }
