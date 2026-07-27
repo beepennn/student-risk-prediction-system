@@ -13,6 +13,7 @@ from app.models.user import User
 from app.services.dashboard_service import (
     get_teacher_dashboard,
     get_student_dashboard,
+    get_dashboard_summary,
 )
 
 from app.services.student_service import (
@@ -28,6 +29,10 @@ from app.schemas.dashboard import (
     NotificationSummary,
 )
 
+from app.schemas.dashboard_summary import (
+    DashboardSummaryResponse,
+)
+
 router = APIRouter(
     prefix="/dashboard",
     tags=["Dashboard"],
@@ -41,6 +46,15 @@ def get_db():
     finally:
         db.close()
 
+@router.get(
+    "/summary",
+    response_model=DashboardSummaryResponse,
+)
+def dashboard_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
+):
+    return get_dashboard_summary(db)
 
 @router.get("/teacher")
 def teacher_dashboard(
@@ -76,7 +90,7 @@ def student_dashboard(
 
         student=StudentInfo(
             id=dashboard["student"].id,
-            full_name=dashboard["student"].full_name,
+            full_name=dashboard["student"].user.full_name,
             roll_number=dashboard["student"].roll_number,
             department=dashboard["student"].department,
             semester=dashboard["student"].semester,
