@@ -1,5 +1,4 @@
-from pydantic import BaseModel
-from pydantic import EmailStr
+from pydantic import BaseModel, EmailStr
 
 from app.schemas.student import StudentResponse
 from app.schemas.academic_record import AcademicRecordResponse
@@ -14,6 +13,10 @@ class StudentProfileResponse(BaseModel):
     latest_prediction: PredictionResponse | None
     latest_recommendation: RecommendationResponse | None
     interventions: list[InterventionResponse]
+
+    class Config:
+        from_attributes = True
+
 
 class TeacherCreate(BaseModel):
     full_name: str
@@ -31,6 +34,7 @@ class TeacherResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class TeacherUpdate(BaseModel):
     full_name: str

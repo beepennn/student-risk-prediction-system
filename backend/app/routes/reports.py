@@ -12,11 +12,14 @@ from app.services.report_service import get_latest_predictions
 from app.services.report_service import get_intervention_summary
 
 from app.schemas.dashboard import (
-    DashboardSummaryResponse,
     InterventionSummaryResponse,
     DepartmentSummaryResponse,
     SemesterSummaryResponse,
     LatestPredictionResponse,
+)
+
+from app.schemas.dashboard_summary import (
+    DashboardSummaryResponse,
 )
 
 from app.core.dependencies import require_teacher

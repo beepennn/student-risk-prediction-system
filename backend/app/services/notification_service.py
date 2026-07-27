@@ -3,12 +3,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
 from app.models.notification import Notification
+from app.models.student import Student
+
 from app.schemas.notification import NotificationCreate
 
 from app.services.email_service import send_email
-from app.models.student import Student
-
 from app.services.audit_service import create_audit_log
+
 from app.core.api_response import success_response
 
 
@@ -56,6 +57,7 @@ def get_notifications(
         .all()
     )
 
+
 def get_notification(
     db: Session,
     notification_id: int,
@@ -80,6 +82,18 @@ def create_notification(
     notification: NotificationCreate,
     admin_id: int,
 ):
+    student = (
+        db.query(Student)
+        .filter(Student.id == notification.student_id)
+        .first()
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student not found.",
+        )
+
     db_notification = Notification(
         **notification.model_dump()
     )
@@ -127,9 +141,7 @@ def generate_notification(
     )
 
     if student is not None:
-
         student_email = student.user.email
-
         parent_email = student.parent_email
 
         html = f"""
@@ -161,8 +173,8 @@ def generate_notification(
             notification.is_sent = True
             db.commit()
 
-        except Exception as e:
-            print("Email Error:", e)
+        except Exception:
+            pass
 
     return notification
 
@@ -316,6 +328,7 @@ def delete_notification(
         message="Notification deleted successfully."
     )
 
+
 def mark_all_notifications_as_read(
     db: Session,
     student_id: int,
@@ -324,7 +337,7 @@ def mark_all_notifications_as_read(
         db.query(Notification)
         .filter(
             Notification.student_id == student_id,
-            Notification.is_read == False,
+            Notification.is_read.is_(False),
         )
         .all()
     )
