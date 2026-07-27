@@ -9,7 +9,6 @@ def save_shap_explanations(
     shap_values: dict,
 ):
     if not shap_values:
-        print("No SHAP values received.")
         return
 
     for feature_name, explanation in shap_values.items():
@@ -29,14 +28,6 @@ def save_shap_explanations(
 
     db.commit()
 
-
-    saved = (
-        db.query(SHAPExplanation)
-        .filter(
-            SHAPExplanation.prediction_id == prediction_id
-        )
-        .count()
-    )
 
 def get_shap_explanations(
     db: Session,
