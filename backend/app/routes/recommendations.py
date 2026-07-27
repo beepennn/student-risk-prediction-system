@@ -9,12 +9,17 @@ from app.schemas.recommendation import (
     RecommendationUpdateStatus,
 )
 
+from app.schemas.recommendation_statistics import (
+    RecommendationStatisticsResponse,
+)
+
 from app.services.recommendation_service import (
     get_recommendations,
     get_recommendation,
     create_recommendation,
     get_latest_recommendation,
     get_admin_recommendations,
+    get_recommendation_statistics,
     update_recommendation,
     update_recommendation_status,
     delete_recommendation,
@@ -76,6 +81,15 @@ def read_recommendations(
         order=order,
     )
 
+@router.get(
+    "/statistics",
+    response_model=RecommendationStatisticsResponse,
+)
+def recommendation_statistics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
+):
+    return get_recommendation_statistics(db)
 
 @router.get("/admin")
 def admin_recommendations(

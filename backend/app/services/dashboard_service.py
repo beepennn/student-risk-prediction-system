@@ -106,3 +106,51 @@ def get_student_dashboard(
         "recommendation": recommendation,
         "notifications": notifications,
     }
+
+def get_dashboard_summary(db: Session):
+    total_students = db.query(Student).count()
+
+    total_predictions = db.query(Prediction).count()
+
+    high_risk = (
+        db.query(Prediction)
+        .filter(Prediction.risk_level == "High Risk")
+        .count()
+    )
+
+    medium_risk = (
+        db.query(Prediction)
+        .filter(Prediction.risk_level == "Medium Risk")
+        .count()
+    )
+
+    low_risk = (
+        db.query(Prediction)
+        .filter(Prediction.risk_level == "Low Risk")
+        .count()
+    )
+
+    pending = (
+        db.query(Recommendation)
+        .filter(Recommendation.status == "Pending")
+        .count()
+    )
+
+    completed = (
+        db.query(Recommendation)
+        .filter(Recommendation.status == "Completed")
+        .count()
+    )
+
+    notifications = db.query(Notification).count()
+
+    return {
+        "total_students": total_students,
+        "total_predictions": total_predictions,
+        "high_risk_students": high_risk,
+        "medium_risk_students": medium_risk,
+        "low_risk_students": low_risk,
+        "pending_recommendations": pending,
+        "completed_recommendations": completed,
+        "total_notifications": notifications,
+    }

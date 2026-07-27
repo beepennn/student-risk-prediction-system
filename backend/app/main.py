@@ -22,6 +22,7 @@ from app.routes import admin
 from app.routes import analytics
 from app.routes import export
 from app.routes.audit_logs import router as audit_router
+from app.routes import dashboard
 
 from app.core.exception_handler import register_exception_handlers
 from app.middleware.logging_middleware import logging_middleware
@@ -61,6 +62,7 @@ app.include_router(teacher.router)
 app.include_router(admin.router)
 app.include_router(analytics.router)
 app.include_router(export.router)
+app.include_router(dashboard.router)
 app.include_router(audit_router)
 
 @app.get("/")
