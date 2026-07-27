@@ -13,6 +13,10 @@ from app.models.user import User
 from app.services.prediction_service import get_latest_prediction
 from app.services.recommendation_service import get_latest_recommendation
 
+from fastapi import status
+from app.schemas.teacher import TeacherCreate
+from app.core.security import hash_password
+
 def get_student_profile(
     db: Session,
     student_id: int,
@@ -427,3 +431,33 @@ def get_teacher_analytics(
             dashboard["students_without_intervention"]
         ),
     }
+
+def create_teacher(
+    db: Session,
+    teacher: TeacherCreate,
+):
+    existing = (
+        db.query(User)
+        .filter(User.email == teacher.email)
+        .first()
+    )
+
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered.",
+        )
+
+    new_teacher = User(
+        full_name=teacher.full_name,
+        email=teacher.email,
+        password_hash=hash_password(teacher.password),
+        role="Teacher",
+        is_active=teacher.is_active,
+    )
+
+    db.add(new_teacher)
+    db.commit()
+    db.refresh(new_teacher)
+
+    return new_teacher

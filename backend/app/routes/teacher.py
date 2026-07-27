@@ -3,10 +3,19 @@ from sqlalchemy.orm import Session
 
 from app.database.connection import SessionLocal
 
-from app.core.dependencies import require_teacher
+from app.core.dependencies import (
+    require_teacher,
+    require_admin,
+)
+
 from app.models.user import User
 
-from app.schemas.teacher import StudentProfileResponse
+from app.schemas.teacher import (
+    StudentProfileResponse,
+    TeacherCreate,
+    TeacherResponse,
+)
+
 from app.services.teacher_service import (
     get_student_profile,
     get_teacher_dashboard,
@@ -14,6 +23,7 @@ from app.services.teacher_service import (
     search_students,
     get_teacher_analytics,
     get_teacher_students,
+    create_teacher,
 )
 
 from app.services.intervention_service import (
@@ -36,6 +46,20 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@router.post(
+    "",
+    response_model=TeacherResponse,
+)
+def add_teacher(
+    teacher: TeacherCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return create_teacher(
+        db,
+        teacher,
+    )
 
 
 @router.get(
