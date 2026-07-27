@@ -25,13 +25,13 @@ def get_dashboard_summary(db: Session):
     low_risk = 0
 
     for prediction in latest_predictions:
-        if prediction.risk_level == "High":
+        if prediction.risk_level == "High Risk":
             high_risk += 1
 
-        elif prediction.risk_level == "Medium":
+        elif prediction.risk_level == "Medium Risk":
             medium_risk += 1
 
-        elif prediction.risk_level == "Low":
+        elif prediction.risk_level == "Low Risk":
             low_risk += 1
 
     return {
