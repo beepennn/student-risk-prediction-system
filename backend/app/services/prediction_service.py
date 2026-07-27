@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.models.prediction import Prediction
 from app.models.student import Student
-from app.models.academic_record import AcademicRecord
 
-from app.schemas.prediction import PredictionCreate
-from app.schemas.prediction import PredictionResponse
+from app.schemas.prediction import (
+    PredictionCreate,
+    PredictionResponse,
+)
 
 from app.services.audit_service import create_audit_log
 from app.core.api_response import success_response
@@ -71,6 +72,18 @@ def create_prediction(
     db: Session,
     prediction: PredictionCreate,
 ):
+    student = (
+        db.query(Student)
+        .filter(Student.id == prediction.student_id)
+        .first()
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student not found.",
+        )
+
     db_prediction = Prediction(
         **prediction.model_dump()
     )
@@ -110,8 +123,12 @@ def get_latest_prediction(
 ):
     return (
         db.query(Prediction)
-        .filter(Prediction.student_id == student_id)
-        .order_by(Prediction.prediction_date.desc())
+        .filter(
+            Prediction.student_id == student_id
+        )
+        .order_by(
+            Prediction.prediction_date.desc()
+        )
         .first()
     )
 
@@ -214,26 +231,6 @@ def delete_prediction(
         message="Prediction deleted successfully."
     )
 
-def is_prediction_required(
-    latest_prediction,
-    latest_record,
-):
-    """
-    Returns True if a new prediction should be generated.
-
-    For now we simply compare timestamps.
-
-    If the academic record was updated after the latest prediction,
-    generate a new prediction.
-    """
-
-    if latest_prediction is None:
-        return True
-
-    if latest_record.created_at > latest_prediction.prediction_date:
-        return True
-
-    return False
 
 def generate_prediction_for_student(
     db: Session,
@@ -243,8 +240,6 @@ def generate_prediction_for_student(
         db,
         student_id,
     )
-
-    print("Academic:", academic)
 
     student_features = {
         "attendance": academic.attendance,
@@ -256,13 +251,9 @@ def generate_prediction_for_student(
         "gender": academic.gender,
     }
 
-    print("Student Features:", student_features)
-
     prediction = predict_student_risk(
         student_features
     )
-
-    print("Prediction:", prediction)
 
     latest_prediction = get_latest_prediction(
         db,
@@ -276,9 +267,6 @@ def generate_prediction_for_student(
             and latest_prediction.medium_probability == prediction["medium_probability"]
             and latest_prediction.high_probability == prediction["high_probability"]
         ):
-            print("No academic changes detected.")
-            print("Returning existing prediction.")
-
             return PredictionResponse.model_validate(
                 latest_prediction
             )
@@ -289,35 +277,25 @@ def generate_prediction_for_student(
         prediction,
     )
 
-    shap_dict = prediction.get("shap_values", {})
-    if shap_dict:
-        first_key = next(iter(shap_dict))
-        print(first_key, shap_dict[first_key])
-    else:
-        print("No SHAP values received")
-
     save_shap_explanations(
         db=db,
         prediction_id=saved_prediction.id,
-        shap_values=prediction.get("shap_values", {}),
+        shap_values=prediction.get(
+            "shap_values",
+            {},
+        ),
     )
-
-    print("Saved Prediction:", saved_prediction)
 
     recommendation = generate_recommendation(
         db,
         saved_prediction,
     )
 
-    print("Recommendation:", recommendation)
-
-    notification = generate_notification(
+    generate_notification(
         db,
         student_id,
         recommendation,
     )
-
-    print("Notification:", notification)
 
     return PredictionResponse.model_validate(
         saved_prediction

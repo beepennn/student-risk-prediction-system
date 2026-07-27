@@ -16,10 +16,3 @@ class PredictionResponse(PredictionCreate):
 
     class Config:
         from_attributes = True
-
-
-class PredictionResponse(PredictionCreate):
-    id: int
-
-    class Config:
-        from_attributes = True

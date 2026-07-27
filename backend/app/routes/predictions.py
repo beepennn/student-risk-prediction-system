@@ -30,7 +30,6 @@ from app.services.student_service import (
 )
 
 from app.services.shap_service import (
-    save_shap_explanations,
     get_shap_explanations,
 )
 
