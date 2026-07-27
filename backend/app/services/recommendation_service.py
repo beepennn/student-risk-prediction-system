@@ -1,13 +1,13 @@
 from datetime import datetime
 
 from fastapi import HTTPException
-
 from sqlalchemy.orm import Session
 
 from app.models.recommendation import Recommendation
-from app.schemas.recommendation import RecommendationCreate
 from app.models.prediction import Prediction
 from app.models.student import Student
+
+from app.schemas.recommendation import RecommendationCreate
 
 from app.services.audit_service import create_audit_log
 from app.core.api_response import success_response
@@ -70,7 +70,9 @@ def get_recommendation(
 ):
     recommendation = (
         db.query(Recommendation)
-        .filter(Recommendation.id == recommendation_id)
+        .filter(
+            Recommendation.id == recommendation_id
+        )
         .first()
     )
 
@@ -88,6 +90,20 @@ def create_recommendation(
     recommendation: RecommendationCreate,
     admin_id: int,
 ):
+    prediction = (
+        db.query(Prediction)
+        .filter(
+            Prediction.id == recommendation.prediction_id
+        )
+        .first()
+    )
+
+    if prediction is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Prediction not found.",
+        )
+
     db_recommendation = Recommendation(
         **recommendation.model_dump()
     )
@@ -241,8 +257,26 @@ def update_recommendation(
             detail="Recommendation not found.",
         )
 
+    prediction = (
+        db.query(Prediction)
+        .filter(
+            Prediction.id == recommendation.prediction_id
+        )
+        .first()
+    )
+
+    if prediction is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Prediction not found.",
+        )
+
     for key, value in recommendation.model_dump().items():
-        setattr(db_recommendation, key, value)
+        setattr(
+            db_recommendation,
+            key,
+            value,
+        )
 
     db.commit()
     db.refresh(db_recommendation)
@@ -294,6 +328,7 @@ def delete_recommendation(
         message="Recommendation deleted successfully."
     )
 
+
 def update_recommendation_status(
     db: Session,
     recommendation_id: int,
@@ -324,6 +359,7 @@ def update_recommendation_status(
     db.refresh(recommendation)
 
     return recommendation
+
 
 def get_recommendation_statistics(
     db: Session,

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -11,7 +12,7 @@ class RecommendationCreate(BaseModel):
 
 
 class RecommendationUpdateStatus(BaseModel):
-    status: str
+    status: Literal["Pending", "Completed"]
 
 
 class RecommendationResponse(RecommendationCreate):
