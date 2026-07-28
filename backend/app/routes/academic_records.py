@@ -12,6 +12,7 @@ from app.services.academic_service import (
     get_academic_records,
     get_academic_record,
     create_academic_record,
+    update_academic_record,
     get_latest_academic_record,
 )
 
@@ -26,6 +27,7 @@ from app.core.dependencies import (
 
 from app.models.user import User
 
+
 router = APIRouter(
     prefix="/academic-records",
     tags=["Academic Records"],
@@ -34,18 +36,23 @@ router = APIRouter(
 
 def get_db():
     db = SessionLocal()
+
     try:
         yield db
     finally:
         db.close()
 
 
-@router.get("/", response_model=list[AcademicRecordResponse])
+@router.get(
+    "/",
+    response_model=list[AcademicRecordResponse],
+)
 def read_academic_records(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
     return get_academic_records(db)
+
 
 @router.get(
     "/me",
@@ -71,18 +78,49 @@ def get_my_academic_record(
         student.id,
     )
 
-@router.get("/{record_id}", response_model=AcademicRecordResponse)
+
+@router.get(
+    "/{record_id}",
+    response_model=AcademicRecordResponse,
+)
 def read_academic_record(
     record_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_academic_record(db, record_id)
+    return get_academic_record(
+        db,
+        record_id,
+    )
 
-@router.post("/", response_model=AcademicRecordResponse)
+
+@router.post(
+    "/",
+    response_model=AcademicRecordResponse,
+)
 def add_academic_record(
     academic_record: AcademicRecordCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return create_academic_record(db, academic_record)
+    return create_academic_record(
+        db,
+        academic_record,
+    )
+
+
+@router.put(
+    "/{record_id}",
+    response_model=AcademicRecordResponse,
+)
+def edit_academic_record(
+    record_id: int,
+    academic_record: AcademicRecordCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher),
+):
+    return update_academic_record(
+        db=db,
+        record_id=record_id,
+        academic_record=academic_record,
+    )

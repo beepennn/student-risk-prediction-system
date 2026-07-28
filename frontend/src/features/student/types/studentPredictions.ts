@@ -1,9 +1,12 @@
 export interface StudentPrediction {
-  id?: number;
-  risk_level?: string | null;
-  risk_score?: number | null;
-  prediction_date?: string | null;
-  explanation?: string | null;
+  id: number;
+  student_id: number;
+  risk_level: string;
+  low_probability: number;
+  medium_probability: number;
+  high_probability: number;
+  prediction_date: string;
 }
 
-export type StudentPredictionsResponse = StudentPrediction[];
+export type StudentPredictionsResponse =
+  StudentPrediction[];
