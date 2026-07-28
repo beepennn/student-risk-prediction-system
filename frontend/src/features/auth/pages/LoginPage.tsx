@@ -1,24 +1,22 @@
-import Card from "../../../components/ui/Card";
+import {
+  FiLogIn,
+} from "react-icons/fi";
+
+import AuthPageShell from "../components/AuthPageShell";
 import LoginForm from "../components/LoginForm";
+
 
 function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
-      <Card>
-        <div className="w-96">
-          <h1 className="mb-2 text-center text-3xl font-bold text-blue-600">
-            Student Risk Prediction System
-          </h1>
-
-          <p className="mb-6 text-center text-gray-500">
-            Sign in to continue
-          </p>
-
-          <LoginForm />
-        </div>
-      </Card>
-    </div>
+    <AuthPageShell
+      icon={<FiLogIn size={27} />}
+      title="Welcome back"
+      description="Sign in using your registered account to access the Student Risk Prediction System."
+    >
+      <LoginForm />
+    </AuthPageShell>
   );
 }
+
 
 export default LoginPage;

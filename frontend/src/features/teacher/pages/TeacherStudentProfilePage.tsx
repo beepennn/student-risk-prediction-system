@@ -1244,7 +1244,7 @@ function InformationItem({
         {label}
       </p>
 
-      <p className="mt-1 flex items-center gap-2 break-words font-semibold text-gray-900">
+      <p className="mt-1 flex items-center gap-2 wrap-break-word font-semibold text-gray-900">
         {icon}
         {value}
       </p>

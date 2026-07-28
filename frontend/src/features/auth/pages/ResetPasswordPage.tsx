@@ -185,7 +185,7 @@ function ResetPasswordPage() {
     return (
       <PageContainer>
         <Card>
-          <div className="w-full max-w-md py-8 text-center sm:w-[420px]">
+          <div className="w-full max-w-md py-8 text-center sm:w-105">
             <div className="mx-auto h-11 w-11 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
 
             <h1 className="mt-5 text-2xl font-bold text-slate-900">
@@ -207,7 +207,7 @@ function ResetPasswordPage() {
     return (
       <PageContainer>
         <Card>
-          <div className="w-full max-w-md text-center sm:w-[420px]">
+          <div className="w-full max-w-md text-center sm:w-105">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100 text-red-600">
               <FiAlertCircle size={27} />
             </div>
@@ -244,7 +244,7 @@ function ResetPasswordPage() {
     return (
       <PageContainer>
         <Card>
-          <div className="w-full max-w-md text-center sm:w-[420px]">
+          <div className="w-full max-w-md text-center sm:w-105">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-600">
               <FiCheckCircle size={28} />
             </div>
@@ -291,7 +291,7 @@ function ResetPasswordPage() {
   return (
     <PageContainer>
       <Card>
-        <div className="w-full max-w-md sm:w-[420px]">
+        <div className="w-full max-w-md sm:w-105">
           <div className="text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-blue-600">
               <FiKey size={27} />

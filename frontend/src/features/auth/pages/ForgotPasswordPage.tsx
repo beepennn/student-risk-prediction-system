@@ -9,15 +9,20 @@ import {
   FiAlertCircle,
   FiArrowLeft,
   FiCheckCircle,
+  FiLoader,
   FiMail,
+  FiRefreshCw,
   FiSend,
 } from "react-icons/fi";
 
-import { Link } from "react-router-dom";
+import {
+  Link,
+} from "react-router-dom";
 
 import Button from "../../../components/ui/Button";
-import Card from "../../../components/ui/Card";
 import Input from "../../../components/ui/Input";
+
+import AuthPageShell from "../components/AuthPageShell";
 
 import {
   requestPasswordReset,
@@ -25,17 +30,25 @@ import {
 
 
 function ForgotPasswordPage() {
-  const [email, setEmail] =
-    useState("");
+  const [
+    email,
+    setEmail,
+  ] = useState("");
 
-  const [loading, setLoading] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
 
-  const [successMessage, setSuccessMessage] =
-    useState("");
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] = useState("");
 
 
   async function handleSubmit(
@@ -48,7 +61,7 @@ function ForgotPasswordPage() {
 
     if (!normalizedEmail) {
       setError(
-        "Enter your email address."
+        "Enter your email address.",
       );
 
       return;
@@ -63,7 +76,7 @@ function ForgotPasswordPage() {
       )
     ) {
       setError(
-        "Enter a valid email address."
+        "Enter a valid email address.",
       );
 
       return;
@@ -75,11 +88,9 @@ function ForgotPasswordPage() {
       setSuccessMessage("");
 
       const response =
-        await requestPasswordReset(
-          {
-            email: normalizedEmail,
-          },
-        );
+        await requestPasswordReset({
+          email: normalizedEmail,
+        });
 
       setSuccessMessage(
         response.message,
@@ -101,131 +112,159 @@ function ForgotPasswordPage() {
   }
 
 
+  function handleSendAnotherLink() {
+    setSuccessMessage("");
+    setError("");
+  }
+
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
-      <Card>
-        <div className="w-full max-w-md sm:w-[420px]">
-          <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-              <FiMail size={26} />
-            </div>
-
-            <h1 className="mt-5 text-3xl font-bold text-slate-900">
-              Forgot Password
-            </h1>
-
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Enter the email used to sign in.
-              We will send a secure password-reset
-              link when an active account exists.
-            </p>
-          </div>
-
-          {successMessage ? (
-            <div className="mt-7 space-y-5">
-              <div className="rounded-xl border border-green-200 bg-green-50 p-5 text-green-700">
-                <div className="flex gap-3">
-                  <FiCheckCircle
-                    className="mt-0.5 shrink-0"
-                    size={21}
-                  />
-
-                  <div>
-                    <p className="font-semibold">
-                      Check your email
-                    </p>
-
-                    <p className="mt-1 text-sm leading-6">
-                      {successMessage}
-                    </p>
-                  </div>
-                </div>
+    <AuthPageShell
+      icon={<FiMail size={27} />}
+      title={
+        successMessage
+          ? "Check your email"
+          : "Forgot your password?"
+      }
+      description={
+        successMessage
+          ? "Follow the secure link in your email to create a new password."
+          : "Enter the email address associated with your account and we will send password-reset instructions."
+      }
+    >
+      {successMessage ? (
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-green-200 bg-green-50 p-5">
+            <div className="flex gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
+                <FiCheckCircle
+                  size={21}
+                />
               </div>
 
-              <p className="text-center text-sm text-slate-500">
-                The link expires after 30 minutes.
-                Check the spam folder when the email
-                is not visible.
-              </p>
+              <div>
+                <h3 className="font-semibold text-green-900">
+                  Reset link requested
+                </h3>
 
-              <Link
-                to="/login"
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700"
-              >
-                <FiArrowLeft />
-                Return to Login
-              </Link>
+                <p className="mt-1 text-sm leading-6 text-green-700">
+                  {successMessage}
+                </p>
+              </div>
             </div>
-          ) : (
-            <form
-              onSubmit={handleSubmit}
-              className="mt-7 space-y-5"
-              noValidate
-            >
-              {error && (
-                <div className="flex gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  <FiAlertCircle
-                    className="mt-0.5 shrink-0"
-                    size={18}
-                  />
+          </div>
 
-                  <p>{error}</p>
-                </div>
-              )}
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+            The secure link expires after
+            30 minutes. Check your spam or
+            junk folder when the message is
+            not visible.
+          </div>
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Account Email
-                </span>
+          <Link
+            to="/login"
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700"
+          >
+            <FiArrowLeft />
+            Return to Login
+          </Link>
 
-                <div className="relative">
-                  <FiMail
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={19}
-                  />
-
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(event) => {
-                      setEmail(
-                        event.target.value,
-                      );
-
-                      setError("");
-                    }}
-                    placeholder="name@example.com"
-                    autoComplete="email"
-                    disabled={loading}
-                    className="pl-11"
-                  />
-                </div>
-              </label>
-
-              <Button
-                type="submit"
-                className="flex w-full items-center justify-center gap-2"
-                disabled={loading}
-              >
-                <FiSend />
-
-                {loading
-                  ? "Sending Link..."
-                  : "Send Reset Link"}
-              </Button>
-
-              <Link
-                to="/login"
-                className="flex items-center justify-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
-              >
-                <FiArrowLeft />
-                Back to Login
-              </Link>
-            </form>
-          )}
+          <button
+            type="button"
+            onClick={
+              handleSendAnotherLink
+            }
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            <FiRefreshCw />
+            Send Another Link
+          </button>
         </div>
-      </Card>
-    </div>
+      ) : (
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5"
+          noValidate
+        >
+          {error && (
+            <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <FiAlertCircle
+                className="mt-0.5 shrink-0"
+                size={18}
+              />
+
+              <p className="leading-6">
+                {error}
+              </p>
+            </div>
+          )}
+
+          <label className="block">
+            <span className="mb-2 block text-sm font-semibold text-slate-700">
+              Account Email
+            </span>
+
+            <div className="relative">
+              <FiMail
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                size={19}
+              />
+
+              <Input
+                type="email"
+                value={email}
+                onChange={(event) => {
+                  setEmail(
+                    event.target.value,
+                  );
+
+                  setError("");
+                }}
+                placeholder="name@example.com"
+                autoComplete="email"
+                disabled={loading}
+                className="pl-11"
+              />
+            </div>
+
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              Use the same email address
+              registered with your account.
+            </p>
+          </label>
+
+          <Button
+            type="submit"
+            className="w-full gap-2"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <FiLoader
+                  className="animate-spin"
+                  size={19}
+                />
+
+                Sending Reset Link...
+              </>
+            ) : (
+              <>
+                <FiSend size={19} />
+                Send Reset Link
+              </>
+            )}
+          </Button>
+
+          <Link
+            to="/login"
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            <FiArrowLeft />
+            Back to Login
+          </Link>
+        </form>
+      )}
+    </AuthPageShell>
   );
 }
 
