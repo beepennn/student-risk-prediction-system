@@ -1,29 +1,20 @@
-
 # Preprocessing Report
 
-## Dataset
+## Input
 
-Input file:
+`C:\Users\Asus\student-risk-prediction-system\ml\data\raw\student_performance_new_with_gpa_semester.csv`
 
-`data\raw\student_performance_new_with_gpa_semester.csv`
+## Output
 
-Output file:
+`C:\Users\Asus\student-risk-prediction-system\ml\data\processed\student_performance_processed.csv`
 
-`data\processed\student_performance_processed.csv`
+## Rows
 
-## Dataset Shape
+- Original rows: 5000
+- Final rows: 5000
+- Removed rows: 0
 
-Original rows: 5000
-
-Rows removed: 0
-
-Final rows: 5000
-
-Final columns: 8
-
-## ML Features
-
-The final backend-compatible ML features are:
+## Features
 
 - attendance
 - internal_marks
@@ -33,58 +24,37 @@ The final backend-compatible ML features are:
 - semester
 - gender
 
-## Target
+## Target Method
 
-Target variable:
+The target is generated from an interpretable weighted
+academic performance score:
 
-`AcademicRisk`
+- Attendance: 25%
+- Internal marks: 20%
+- Assignment score: 15%
+- Quiz score: 15%
+- Previous GPA: 25%
 
-## Academic Risk Distribution
+Risk categories:
+
+- Performance score below 50: High Risk
+- Performance score from 50 to below 70: Medium Risk
+- Performance score 70 or above: Low Risk
+
+## Risk Distribution
 
 AcademicRisk
-Medium Risk    1708
-High Risk      1704
-Low Risk       1588
-
-## Semester Distribution
-
-semester
-1    650
-2    684
-3    599
-4    608
-5    629
-6    606
-7    630
-8    594
-
-## Gender Distribution
-
-gender
-Male      2551
-Female    2449
+Low Risk       3619
+Medium Risk    1381
 
 ## Missing Values
 
-attendance          0
-internal_marks      0
-assignment_score    0
-quiz_score          0
-previous_gpa        0
-semester            0
-gender              0
-AcademicRisk        0
-
-## Encoding
-
-Gender and semester are kept as raw values.
-
-Encoding is handled automatically by the sklearn Pipeline using OneHotEncoder.
-
-The preprocessing script does not manually create:
-
-- Gender_Male
-- Semester_1
-- Semester_2
-- Semester_3
-- etc.
+attendance           0
+internal_marks       0
+assignment_score     0
+quiz_score           0
+previous_gpa         0
+semester             0
+gender               0
+performance_score    0
+AcademicRisk         0

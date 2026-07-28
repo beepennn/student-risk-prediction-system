@@ -15,6 +15,10 @@ import ResetPasswordPage from "../../features/auth/pages/ResetPasswordPage";
 
 import AdminDashboardPage from "../../features/admin/pages/AdminDashboardPage";
 import AdminStudentsPage from "../../features/admin/pages/AdminStudentsPage";
+import AdminAcademicRecordsPage from "../../features/admin/pages/AdminAcademicRecordsPage";
+import AdminPredictionsPage from "../../features/admin/pages/AdminPredictionsPage";
+import AdminRecommendationsPage from "../../features/admin/pages/AdminRecommendationsPage";
+import AdminNotificationsPage from "../../features/admin/pages/AdminNotificationsPage";
 
 import TeacherDashboardPage from "../../features/teacher/pages/TeacherDashboardPage";
 import TeacherStudentsPage from "../../features/teacher/pages/TeacherStudentsPage";
@@ -28,16 +32,16 @@ import StudentPredictionsPage from "../../features/student/pages/StudentPredicti
 
 import NotFoundPage from "../../pages/NotFoundPage";
 
-import AdminAcademicRecordsPage from "../../features/admin/pages/AdminAcademicRecordsPage";
-import AdminPredictionsPage from "../../features/admin/pages/AdminPredictionsPage";
-
 function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
         {/* Public authentication routes */}
         <Route element={<AuthLayout />}>
-          <Route path="/" element={<LoginPage />} />
+          <Route
+            path="/"
+            element={<LoginPage />}
+          />
 
           <Route
             path="/login"
@@ -55,10 +59,15 @@ function AppRouter() {
           />
         </Route>
 
-        {/* Protected application routes */}
-        <Route element={<ProtectedRoute />}>
+        {/* Admin protected routes */}
+        <Route
+          element={
+            <ProtectedRoute
+              allowedRoles={["Admin"]}
+            />
+          }
+        >
           <Route element={<DashboardLayout />}>
-            {/* Admin */}
             <Route
               path="/admin"
               element={<AdminDashboardPage />}
@@ -71,7 +80,9 @@ function AppRouter() {
 
             <Route
               path="/admin/academic-records"
-              element={<AdminAcademicRecordsPage />}
+              element={
+                <AdminAcademicRecordsPage />
+              }
             />
 
             <Route
@@ -79,7 +90,31 @@ function AppRouter() {
               element={<AdminPredictionsPage />}
             />
 
-            {/* Teacher */}
+            <Route
+              path="/admin/recommendations"
+              element={
+                <AdminRecommendationsPage />
+              }
+            />
+
+            <Route
+              path="/admin/notifications"
+              element={
+                <AdminNotificationsPage />
+              }
+            />
+          </Route>
+        </Route>
+
+        {/* Teacher protected routes */}
+        <Route
+          element={
+            <ProtectedRoute
+              allowedRoles={["Teacher"]}
+            />
+          }
+        >
+          <Route element={<DashboardLayout />}>
             <Route
               path="/teacher"
               element={<TeacherDashboardPage />}
@@ -92,15 +127,29 @@ function AppRouter() {
 
             <Route
               path="/teacher/students/:studentId"
-              element={<TeacherStudentProfilePage />}
+              element={
+                <TeacherStudentProfilePage />
+              }
             />
 
             <Route
               path="/teacher/interventions"
-              element={<TeacherInterventionsPage />}
+              element={
+                <TeacherInterventionsPage />
+              }
             />
+          </Route>
+        </Route>
 
-            {/* Student */}
+        {/* Student protected routes */}
+        <Route
+          element={
+            <ProtectedRoute
+              allowedRoles={["Student"]}
+            />
+          }
+        >
+          <Route element={<DashboardLayout />}>
             <Route
               path="/student"
               element={<StudentDashboardPage />}
@@ -113,12 +162,16 @@ function AppRouter() {
 
             <Route
               path="/student/analytics"
-              element={<StudentAnalyticsPage />}
+              element={
+                <StudentAnalyticsPage />
+              }
             />
 
             <Route
               path="/student/predictions"
-              element={<StudentPredictionsPage />}
+              element={
+                <StudentPredictionsPage />
+              }
             />
           </Route>
         </Route>

@@ -52,3 +52,19 @@ export async function createAcademicRecord(
 
   return response.data;
 }
+
+export async function updateAcademicRecord(
+  token: string,
+  recordId: number,
+  payload: CreateAcademicRecordPayload,
+): Promise<AcademicRecord> {
+  const response = await api.put<AcademicRecord>(
+    `/academic-records/${recordId}`,
+    payload,
+    {
+      headers: getAuthHeaders(token),
+    },
+  );
+
+  return response.data;
+}

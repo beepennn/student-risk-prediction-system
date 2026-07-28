@@ -1,9 +1,13 @@
+import type { ReactNode } from "react";
+
 import {
   FiActivity,
   FiBarChart2,
+  FiBell,
   FiBookOpen,
   FiHome,
   FiLogOut,
+  FiTarget,
   FiTrendingUp,
   FiUser,
   FiUsers,
@@ -20,7 +24,7 @@ import { useAuth } from "../../features/auth/context/useAuth";
 interface SidebarItem {
   name: string;
   path: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }
 
 function Sidebar() {
@@ -51,6 +55,16 @@ function Sidebar() {
       name: "Predictions & SHAP",
       path: "/admin/predictions",
       icon: <FiTrendingUp size={20} />,
+    },
+    {
+      name: "Recommendations",
+      path: "/admin/recommendations",
+      icon: <FiTarget size={20} />,
+    },
+    {
+      name: "Notifications",
+      path: "/admin/notifications",
+      icon: <FiBell size={20} />,
     },
   ];
 
@@ -96,15 +110,17 @@ function Sidebar() {
   ];
 
   function getMenuItems(): SidebarItem[] {
-    if (pathname.startsWith("/admin")) {
+    const role = user?.role.toLowerCase();
+
+    if (role === "admin") {
       return adminMenu;
     }
 
-    if (pathname.startsWith("/teacher")) {
+    if (role === "teacher") {
       return teacherMenu;
     }
 
-    if (pathname.startsWith("/student")) {
+    if (role === "student") {
       return studentMenu;
     }
 
@@ -115,14 +131,17 @@ function Sidebar() {
     path: string,
   ): boolean {
     if (
+      path === "/admin" ||
       path === "/teacher" ||
-      path === "/student" ||
-      path === "/admin"
+      path === "/student"
     ) {
       return pathname === path;
     }
 
-    return pathname.startsWith(path);
+    return (
+      pathname === path ||
+      pathname.startsWith(`${path}/`)
+    );
   }
 
   function handleLogout() {
@@ -149,7 +168,7 @@ function Sidebar() {
 
       <div className="border-b border-slate-700 px-6 py-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600">
             <FiUser size={21} />
           </div>
 
@@ -183,6 +202,7 @@ function Sidebar() {
               }`}
             >
               {item.icon}
+
               <span>{item.name}</span>
             </NavLink>
           );

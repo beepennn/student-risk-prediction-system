@@ -12,6 +12,7 @@ import {
   FiBookOpen,
   FiChevronLeft,
   FiChevronRight,
+  FiEdit2,
   FiPlus,
   FiRefreshCw,
   FiSearch,
@@ -23,6 +24,7 @@ import { useAuth } from "../../auth/context/useAuth";
 import {
   createAcademicRecord,
   getAcademicRecords,
+  updateAcademicRecord,
 } from "../services/academicRecordManagementService";
 
 import { getAdminStudents } from "../services/studentManagementService";
@@ -59,21 +61,30 @@ function AdminAcademicRecordsPage() {
     AdminStudent[]
   >([]);
 
-  const [searchInput, setSearchInput] = useState("");
+  const [editingRecord, setEditingRecord] =
+    useState<AcademicRecord | null>(null);
+
+  const [searchInput, setSearchInput] =
+    useState("");
+
   const [semesterFilter, setSemesterFilter] =
     useState("");
+
   const [genderFilter, setGenderFilter] =
     useState("");
 
   const [page, setPage] = useState(1);
 
   const [loading, setLoading] = useState(true);
+
   const [submitting, setSubmitting] =
     useState(false);
 
   const [error, setError] = useState("");
+
   const [modalError, setModalError] =
     useState("");
+
   const [successMessage, setSuccessMessage] =
     useState("");
 
@@ -85,7 +96,10 @@ function AdminAcademicRecordsPage() {
 
   const [formErrors, setFormErrors] = useState<
     Partial<
-      Record<keyof AcademicRecordFormState, string>
+      Record<
+        keyof AcademicRecordFormState,
+        string
+      >
     >
   >({});
 
@@ -110,12 +124,13 @@ function AdminAcademicRecordsPage() {
           }),
         ]);
 
-      const sortedRecords = [...academicRecords].sort(
-        (firstRecord, secondRecord) =>
-          secondRecord.id - firstRecord.id,
+      setRecords(
+        [...academicRecords].sort(
+          (firstRecord, secondRecord) =>
+            secondRecord.id - firstRecord.id,
+        ),
       );
 
-      setRecords(sortedRecords);
       setStudents(studentRecords);
     } catch (requestError) {
       console.error(
@@ -214,7 +229,31 @@ function AdminAcademicRecordsPage() {
   }, [page, totalPages]);
 
   function openCreateModal() {
+    setEditingRecord(null);
     setForm(emptyForm);
+    setFormErrors({});
+    setModalError("");
+    setIsModalOpen(true);
+  }
+
+  function openEditModal(record: AcademicRecord) {
+    setEditingRecord(record);
+
+    setForm({
+      studentId: String(record.student_id),
+      attendance: String(record.attendance),
+      internalMarks: String(
+        record.internal_marks,
+      ),
+      assignmentScore: String(
+        record.assignment_score,
+      ),
+      quizScore: String(record.quiz_score),
+      previousGpa: String(record.previous_gpa),
+      semester: String(record.semester),
+      gender: record.gender,
+    });
+
     setFormErrors({});
     setModalError("");
     setIsModalOpen(true);
@@ -226,6 +265,7 @@ function AdminAcademicRecordsPage() {
     }
 
     setIsModalOpen(false);
+    setEditingRecord(null);
     setForm(emptyForm);
     setFormErrors({});
     setModalError("");
@@ -250,7 +290,10 @@ function AdminAcademicRecordsPage() {
 
   function validateForm(): boolean {
     const errors: Partial<
-      Record<keyof AcademicRecordFormState, string>
+      Record<
+        keyof AcademicRecordFormState,
+        string
+      >
     > = {};
 
     if (!form.studentId) {
@@ -321,7 +364,8 @@ function AdminAcademicRecordsPage() {
     }
 
     if (!form.gender) {
-      errors.gender = "Please select gender.";
+      errors.gender =
+        "Please select gender.";
     }
 
     setFormErrors(errors);
@@ -338,6 +382,7 @@ function AdminAcademicRecordsPage() {
       setModalError(
         "You are not authenticated.",
       );
+
       return;
     }
 
@@ -369,13 +414,29 @@ function AdminAcademicRecordsPage() {
           gender: form.gender,
         };
 
-      await createAcademicRecord(token, payload);
+      if (editingRecord) {
+        await updateAcademicRecord(
+          token,
+          editingRecord.id,
+          payload,
+        );
 
-      setSuccessMessage(
-        "Academic record created successfully.",
-      );
+        setSuccessMessage(
+          "Academic record updated successfully.",
+        );
+      } else {
+        await createAcademicRecord(
+          token,
+          payload,
+        );
+
+        setSuccessMessage(
+          "Academic record created successfully.",
+        );
+      }
 
       setIsModalOpen(false);
+      setEditingRecord(null);
       setForm(emptyForm);
       setFormErrors({});
       setModalError("");
@@ -383,7 +444,7 @@ function AdminAcademicRecordsPage() {
       await fetchData();
     } catch (requestError) {
       console.error(
-        "Failed to create academic record:",
+        "Failed to save academic record:",
         requestError,
       );
 
@@ -418,15 +479,15 @@ function AdminAcademicRecordsPage() {
           </div>
 
           <p className="mt-2 text-gray-500">
-            Manage student attendance, marks, GPA and
-            semester performance.
+            Add and correct student attendance,
+            marks, GPA and semester performance.
           </p>
         </div>
 
         <button
           type="button"
           onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700"
         >
           <FiPlus />
           Add Academic Record
@@ -434,35 +495,21 @@ function AdminAcademicRecordsPage() {
       </header>
 
       {successMessage && (
-        <div className="flex items-start justify-between gap-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700">
-          <p>{successMessage}</p>
-
-          <button
-            type="button"
-            onClick={() =>
-              setSuccessMessage("")
-            }
-            className="rounded p-1 hover:bg-green-100"
-            aria-label="Close success message"
-          >
-            <FiX />
-          </button>
-        </div>
+        <AlertMessage
+          type="success"
+          message={successMessage}
+          onClose={() =>
+            setSuccessMessage("")
+          }
+        />
       )}
 
       {error && (
-        <div className="flex items-start justify-between gap-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-          <p>{error}</p>
-
-          <button
-            type="button"
-            onClick={() => setError("")}
-            className="rounded p-1 hover:bg-red-100"
-            aria-label="Close error message"
-          >
-            <FiX />
-          </button>
-        </div>
+        <AlertMessage
+          type="error"
+          message={error}
+          onClose={() => setError("")}
+        />
       )}
 
       <section className="rounded-xl bg-white p-5 shadow-sm">
@@ -474,11 +521,13 @@ function AdminAcademicRecordsPage() {
               type="search"
               value={searchInput}
               onChange={(event) => {
-                setSearchInput(event.target.value);
+                setSearchInput(
+                  event.target.value,
+                );
                 setPage(1);
               }}
               placeholder="Search by student..."
-              className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
@@ -490,7 +539,7 @@ function AdminAcademicRecordsPage() {
               );
               setPage(1);
             }}
-            className="rounded-lg border border-gray-300 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className={getInputClass(false)}
           >
             <option value="">
               All semesters
@@ -517,16 +566,23 @@ function AdminAcademicRecordsPage() {
               );
               setPage(1);
             }}
-            className="rounded-lg border border-gray-300 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className={getInputClass(false)}
           >
             <option value="">
               All genders
             </option>
-            <option value="Male">Male</option>
+
+            <option value="Male">
+              Male
+            </option>
+
             <option value="Female">
               Female
             </option>
-            <option value="Other">Other</option>
+
+            <option value="Other">
+              Other
+            </option>
           </select>
 
           <div className="flex gap-3">
@@ -534,20 +590,21 @@ function AdminAcademicRecordsPage() {
               type="button"
               onClick={() => void fetchData()}
               disabled={loading}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               <FiRefreshCw
                 className={
                   loading ? "animate-spin" : ""
                 }
               />
+
               Refresh
             </button>
 
             <button
               type="button"
               onClick={resetFilters}
-              className="rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 transition hover:bg-gray-50"
+              className="rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
             >
               Clear
             </button>
@@ -557,38 +614,11 @@ function AdminAcademicRecordsPage() {
 
       <section className="overflow-hidden rounded-xl bg-white shadow-sm">
         {loading ? (
-          <div className="p-12 text-center">
-            <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
-
-            <p className="mt-4 text-gray-500">
-              Loading academic records...
-            </p>
-          </div>
+          <LoadingState />
         ) : filteredRecords.length === 0 ? (
-          <div className="p-12 text-center">
-            <FiBookOpen
-              size={46}
-              className="mx-auto text-gray-300"
-            />
-
-            <p className="mt-4 font-medium text-gray-700">
-              No academic records found
-            </p>
-
-            <p className="mt-1 text-sm text-gray-500">
-              Adjust the filters or create a new
-              academic record.
-            </p>
-
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white transition hover:bg-blue-700"
-            >
-              <FiPlus />
-              Add Academic Record
-            </button>
-          </div>
+          <EmptyState
+            onAdd={openCreateModal}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -618,15 +648,21 @@ function AdminAcademicRecordsPage() {
                     Quiz
                   </TableHeader>
 
-                  <TableHeader>GPA</TableHeader>
+                  <TableHeader>
+                    GPA
+                  </TableHeader>
 
                   <TableHeader>
                     Gender
                   </TableHeader>
+
+                  <TableHeader align="right">
+                    Actions
+                  </TableHeader>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-gray-100 bg-white">
+              <tbody className="divide-y divide-gray-100">
                 {paginatedRecords.map(
                   (record) => {
                     const student =
@@ -637,7 +673,7 @@ function AdminAcademicRecordsPage() {
                     return (
                       <tr
                         key={record.id}
-                        className="transition hover:bg-gray-50"
+                        className="hover:bg-gray-50"
                       >
                         <TableCell>
                           <div>
@@ -654,7 +690,7 @@ function AdminAcademicRecordsPage() {
                         </TableCell>
 
                         <TableCell>
-                          <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+                          <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
                             Semester{" "}
                             {record.semester}
                           </span>
@@ -687,14 +723,28 @@ function AdminAcademicRecordsPage() {
 
                         <TableCell>
                           <span className="font-semibold text-gray-900">
-                            {record.previous_gpa.toFixed(
-                              2,
-                            )}
+                            {Number(
+                              record.previous_gpa,
+                            ).toFixed(2)}
                           </span>
                         </TableCell>
 
                         <TableCell>
                           {record.gender}
+                        </TableCell>
+
+                        <TableCell align="right">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openEditModal(record)
+                            }
+                            className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50"
+                            title="Edit academic record"
+                            aria-label="Edit academic record"
+                          >
+                            <FiEdit2 />
+                          </button>
                         </TableCell>
                       </tr>
                     );
@@ -705,57 +755,18 @@ function AdminAcademicRecordsPage() {
           </div>
         )}
 
-        <div className="flex flex-col gap-3 border-t border-gray-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-gray-500">
-            Page {page} of {totalPages} ·{" "}
-            {filteredRecords.length} record
-            {filteredRecords.length === 1
-              ? ""
-              : "s"}
-          </p>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={page === 1 || loading}
-              onClick={() =>
-                setPage((currentPage) =>
-                  Math.max(
-                    1,
-                    currentPage - 1,
-                  ),
-                )
-              }
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <FiChevronLeft />
-              Previous
-            </button>
-
-            <button
-              type="button"
-              disabled={
-                page >= totalPages || loading
-              }
-              onClick={() =>
-                setPage((currentPage) =>
-                  Math.min(
-                    totalPages,
-                    currentPage + 1,
-                  ),
-                )
-              }
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Next
-              <FiChevronRight />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={filteredRecords.length}
+          loading={loading}
+          onPageChange={setPage}
+        />
       </section>
 
       {isModalOpen && (
         <AcademicRecordModal
+          editingRecord={editingRecord}
           students={students}
           form={form}
           formErrors={formErrors}
@@ -771,10 +782,14 @@ function AdminAcademicRecordsPage() {
 }
 
 interface AcademicRecordModalProps {
+  editingRecord: AcademicRecord | null;
   students: AdminStudent[];
   form: AcademicRecordFormState;
   formErrors: Partial<
-    Record<keyof AcademicRecordFormState, string>
+    Record<
+      keyof AcademicRecordFormState,
+      string
+    >
   >;
   modalError: string;
   submitting: boolean;
@@ -789,6 +804,7 @@ interface AcademicRecordModalProps {
 }
 
 function AcademicRecordModal({
+  editingRecord,
   students,
   form,
   formErrors,
@@ -799,25 +815,20 @@ function AcademicRecordModal({
   onFieldChange,
 }: AcademicRecordModalProps) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="academic-record-modal-title"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-2xl">
         <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-white px-6 py-5">
           <div>
-            <h2
-              id="academic-record-modal-title"
-              className="text-xl font-semibold text-gray-900"
-            >
-              Add Academic Record
+            <h2 className="text-xl font-semibold text-gray-900">
+              {editingRecord
+                ? "Edit Academic Record"
+                : "Add Academic Record"}
             </h2>
 
             <p className="mt-1 text-sm text-gray-500">
-              Enter the student academic performance
-              information.
+              {editingRecord
+                ? "Correct the student's academic information."
+                : "Enter the student's academic performance information."}
             </p>
           </div>
 
@@ -825,7 +836,7 @@ function AcademicRecordModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 disabled:opacity-50"
+            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
             aria-label="Close modal"
           >
             <FiX size={21} />
@@ -941,127 +952,74 @@ function AcademicRecordModal({
                 <option value="">
                   Select gender
                 </option>
+
                 <option value="Male">
                   Male
                 </option>
+
                 <option value="Female">
                   Female
                 </option>
+
                 <option value="Other">
                   Other
                 </option>
               </select>
             </FormField>
 
-            <FormField
+            <ScoreInput
               label="Attendance (%)"
-              required
+              value={form.attendance}
               error={formErrors.attendance}
-            >
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={form.attendance}
-                onChange={(event) =>
-                  onFieldChange(
-                    "attendance",
-                    event.target.value,
-                  )
-                }
-                placeholder="Example: 85"
-                disabled={submitting}
-                className={getInputClass(
-                  Boolean(
-                    formErrors.attendance,
-                  ),
-                )}
-              />
-            </FormField>
+              onChange={(value) =>
+                onFieldChange(
+                  "attendance",
+                  value,
+                )
+              }
+              submitting={submitting}
+            />
 
-            <FormField
+            <ScoreInput
               label="Internal Marks"
-              required
+              value={form.internalMarks}
               error={formErrors.internalMarks}
-            >
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={form.internalMarks}
-                onChange={(event) =>
-                  onFieldChange(
-                    "internalMarks",
-                    event.target.value,
-                  )
-                }
-                placeholder="Example: 75"
-                disabled={submitting}
-                className={getInputClass(
-                  Boolean(
-                    formErrors.internalMarks,
-                  ),
-                )}
-              />
-            </FormField>
+              onChange={(value) =>
+                onFieldChange(
+                  "internalMarks",
+                  value,
+                )
+              }
+              submitting={submitting}
+            />
 
-            <FormField
+            <ScoreInput
               label="Assignment Score"
-              required
+              value={form.assignmentScore}
               error={
                 formErrors.assignmentScore
               }
-            >
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={form.assignmentScore}
-                onChange={(event) =>
-                  onFieldChange(
-                    "assignmentScore",
-                    event.target.value,
-                  )
-                }
-                placeholder="Example: 80"
-                disabled={submitting}
-                className={getInputClass(
-                  Boolean(
-                    formErrors.assignmentScore,
-                  ),
-                )}
-              />
-            </FormField>
+              onChange={(value) =>
+                onFieldChange(
+                  "assignmentScore",
+                  value,
+                )
+              }
+              submitting={submitting}
+            />
 
-            <FormField
+            <ScoreInput
               label="Quiz Score"
-              required
+              value={form.quizScore}
               error={formErrors.quizScore}
-            >
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={form.quizScore}
-                onChange={(event) =>
-                  onFieldChange(
-                    "quizScore",
-                    event.target.value,
-                  )
-                }
-                placeholder="Example: 70"
-                disabled={submitting}
-                className={getInputClass(
-                  Boolean(
-                    formErrors.quizScore,
-                  ),
-                )}
-              />
-            </FormField>
+              onChange={(value) =>
+                onFieldChange(
+                  "quizScore",
+                  value,
+                )
+              }
+              submitting={submitting}
+            />
 
             <FormField
               label="Previous GPA"
@@ -1096,7 +1054,7 @@ function AcademicRecordModal({
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="rounded-lg border border-gray-300 px-5 py-2.5 font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+              className="rounded-lg border border-gray-300 px-5 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -1104,7 +1062,7 @@ function AcademicRecordModal({
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
               {submitting && (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-white" />
@@ -1112,7 +1070,9 @@ function AcademicRecordModal({
 
               {submitting
                 ? "Saving..."
-                : "Create Record"}
+                : editingRecord
+                  ? "Save Changes"
+                  : "Create Record"}
             </button>
           </div>
         </form>
@@ -1121,11 +1081,42 @@ function AcademicRecordModal({
   );
 }
 
-interface FormFieldProps {
+function ScoreInput({
+  label,
+  value,
+  error,
+  onChange,
+  submitting,
+}: {
   label: string;
-  required?: boolean;
+  value: string;
   error?: string;
-  children: ReactNode;
+  onChange: (value: string) => void;
+  submitting: boolean;
+}) {
+  return (
+    <FormField
+      label={label}
+      required
+      error={error}
+    >
+      <input
+        type="number"
+        min="0"
+        max="100"
+        step="0.01"
+        value={value}
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
+        placeholder="Enter value from 0 to 100"
+        disabled={submitting}
+        className={getInputClass(
+          Boolean(error),
+        )}
+      />
+    </FormField>
+  );
 }
 
 function FormField({
@@ -1133,7 +1124,12 @@ function FormField({
   required = false,
   error,
   children,
-}: FormFieldProps) {
+}: {
+  label: string;
+  required?: boolean;
+  error?: string;
+  children: ReactNode;
+}) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-gray-700">
@@ -1157,31 +1153,176 @@ function FormField({
   );
 }
 
-interface TableHeaderProps {
-  children: ReactNode;
-}
-
 function TableHeader({
   children,
-}: TableHeaderProps) {
+  align = "left",
+}: {
+  children: ReactNode;
+  align?: "left" | "right";
+}) {
   return (
-    <th className="whitespace-nowrap px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+    <th
+      className={`whitespace-nowrap px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 ${
+        align === "right"
+          ? "text-right"
+          : "text-left"
+      }`}
+    >
       {children}
     </th>
   );
 }
 
-interface TableCellProps {
-  children: ReactNode;
-}
-
 function TableCell({
   children,
-}: TableCellProps) {
+  align = "left",
+}: {
+  children: ReactNode;
+  align?: "left" | "right";
+}) {
   return (
-    <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-700">
+    <td
+      className={`whitespace-nowrap px-5 py-4 text-sm text-gray-700 ${
+        align === "right"
+          ? "text-right"
+          : "text-left"
+      }`}
+    >
       {children}
     </td>
+  );
+}
+
+function AlertMessage({
+  type,
+  message,
+  onClose,
+}: {
+  type: "success" | "error";
+  message: string;
+  onClose: () => void;
+}) {
+  const classes =
+    type === "success"
+      ? "border-green-200 bg-green-50 text-green-700"
+      : "border-red-200 bg-red-50 text-red-700";
+
+  return (
+    <div
+      className={`flex items-start justify-between gap-4 rounded-lg border px-4 py-3 ${classes}`}
+    >
+      <p>{message}</p>
+
+      <button
+        type="button"
+        onClick={onClose}
+      >
+        <FiX />
+      </button>
+    </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="p-12 text-center">
+      <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
+
+      <p className="mt-4 text-gray-500">
+        Loading academic records...
+      </p>
+    </div>
+  );
+}
+
+function EmptyState({
+  onAdd,
+}: {
+  onAdd: () => void;
+}) {
+  return (
+    <div className="p-12 text-center">
+      <FiBookOpen
+        size={46}
+        className="mx-auto text-gray-300"
+      />
+
+      <p className="mt-4 font-medium text-gray-700">
+        No academic records found
+      </p>
+
+      <p className="mt-1 text-sm text-gray-500">
+        Add the first academic record.
+      </p>
+
+      <button
+        type="button"
+        onClick={onAdd}
+        className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white"
+      >
+        <FiPlus />
+        Add Academic Record
+      </button>
+    </div>
+  );
+}
+
+function Pagination({
+  page,
+  totalPages,
+  totalItems,
+  loading,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  loading: boolean;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between border-t border-gray-200 px-5 py-4">
+      <p className="text-sm text-gray-500">
+        Page {page} of {totalPages} ·{" "}
+        {totalItems} record
+        {totalItems === 1 ? "" : "s"}
+      </p>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={page === 1 || loading}
+          onClick={() =>
+            onPageChange(
+              Math.max(1, page - 1),
+            )
+          }
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm disabled:opacity-50"
+        >
+          <FiChevronLeft />
+          Previous
+        </button>
+
+        <button
+          type="button"
+          disabled={
+            page >= totalPages || loading
+          }
+          onClick={() =>
+            onPageChange(
+              Math.min(
+                totalPages,
+                page + 1,
+              ),
+            )
+          }
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm disabled:opacity-50"
+        >
+          Next
+          <FiChevronRight />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -1194,7 +1335,10 @@ function validatePercentage(
     | "assignmentScore"
     | "quizScore",
   errors: Partial<
-    Record<keyof AcademicRecordFormState, string>
+    Record<
+      keyof AcademicRecordFormState,
+      string
+    >
   >,
 ) {
   if (!value.trim()) {
@@ -1214,11 +1358,13 @@ function validatePercentage(
   }
 }
 
-function getInputClass(hasError: boolean): string {
+function getInputClass(
+  hasError: boolean,
+): string {
   return [
-    "w-full rounded-lg border bg-white px-4 py-2.5 text-gray-900 outline-none transition placeholder:text-gray-400 disabled:cursor-not-allowed disabled:bg-gray-100",
+    "w-full rounded-lg border bg-white px-4 py-2.5 text-gray-900 outline-none transition disabled:bg-gray-100",
     hasError
-      ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+      ? "border-red-400 focus:ring-2 focus:ring-red-100"
       : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
   ].join(" ");
 }
@@ -1230,9 +1376,12 @@ function formatScore(
   return `${Number(value).toFixed(2)}${suffix}`;
 }
 
-function getErrorMessage(error: unknown): string {
+function getErrorMessage(
+  error: unknown,
+): string {
   if (axios.isAxiosError(error)) {
-    const detail = error.response?.data?.detail;
+    const detail =
+      error.response?.data?.detail;
 
     if (typeof detail === "string") {
       return detail;
@@ -1256,11 +1405,11 @@ function getErrorMessage(error: unknown): string {
     }
 
     if (error.response?.status === 400) {
-      return "An academic record already exists for this student and semester.";
+      return "Another academic record already exists for this student and semester.";
     }
 
     if (error.response?.status === 401) {
-      return "Your session has expired. Please log in again.";
+      return "Your session has expired.";
     }
 
     if (error.response?.status === 403) {
@@ -1268,11 +1417,11 @@ function getErrorMessage(error: unknown): string {
     }
 
     if (error.response?.status === 404) {
-      return "The selected student was not found.";
+      return "The academic record or student was not found.";
     }
 
     if (error.response?.status === 422) {
-      return "Please check all required fields and enter valid values.";
+      return "Please check all entered values.";
     }
 
     if (!error.response) {

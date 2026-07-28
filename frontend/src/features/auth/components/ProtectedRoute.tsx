@@ -6,8 +6,39 @@ import {
 
 import { useAuth } from "../context/useAuth";
 
-function ProtectedRoute() {
-  const { token, isInitializing } = useAuth();
+import type { User } from "../types/auth";
+
+interface ProtectedRouteProps {
+  allowedRoles?: User["role"][];
+}
+
+function getRoleHome(
+  role: User["role"],
+): string {
+  switch (role) {
+    case "Admin":
+      return "/admin";
+
+    case "Teacher":
+      return "/teacher";
+
+    case "Student":
+      return "/student";
+
+    default:
+      return "/login";
+  }
+}
+
+function ProtectedRoute({
+  allowedRoles,
+}: ProtectedRouteProps) {
+  const {
+    token,
+    user,
+    isInitializing,
+  } = useAuth();
+
   const location = useLocation();
 
   if (isInitializing) {
@@ -24,7 +55,7 @@ function ProtectedRoute() {
     );
   }
 
-  if (!token) {
+  if (!token || !user) {
     return (
       <Navigate
         to="/login"
@@ -32,6 +63,18 @@ function ProtectedRoute() {
         state={{
           from: location.pathname,
         }}
+      />
+    );
+  }
+
+  if (
+    allowedRoles &&
+    !allowedRoles.includes(user.role)
+  ) {
+    return (
+      <Navigate
+        to={getRoleHome(user.role)}
+        replace
       />
     );
   }

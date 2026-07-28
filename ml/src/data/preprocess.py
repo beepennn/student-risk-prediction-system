@@ -1,82 +1,51 @@
-import pandas as pd
-
 from pathlib import Path
 
+import pandas as pd
 
-# ============================================================
-# 1. FILE PATHS
-# ============================================================
-
-INPUT_PATH = Path(
-    "data/raw/student_performance_new_with_gpa_semester.csv"
-)
-
-OUTPUT_PATH = Path(
-    "data/processed/student_performance_processed.csv"
-)
-
-REPORT_PATH = Path(
-    "reports/preprocessing_report.md"
+from src.data.create_target import (
+    add_academic_risk_target,
 )
 
 
-# ============================================================
-# 2. LOAD NEW DATASET
-# ============================================================
-
-print("Loading new dataset...")
-
-df = pd.read_csv(
-    INPUT_PATH
+ML_ROOT = (
+    Path(__file__)
+    .resolve()
+    .parents[2]
 )
 
-print(
-    "New dataset loaded successfully."
+INPUT_PATH = (
+    ML_ROOT
+    / "data"
+    / "raw"
+    / "student_performance_new_with_gpa_semester.csv"
 )
 
-print(
-    f"Original dataset shape: {df.shape}"
+OUTPUT_PATH = (
+    ML_ROOT
+    / "data"
+    / "processed"
+    / "student_performance_processed.csv"
+)
+
+REPORT_PATH = (
+    ML_ROOT
+    / "reports"
+    / "preprocessing_report.md"
 )
 
 
-# ============================================================
-# 3. RENAME COLUMNS TO BACKEND / ML SCHEMA
-# ============================================================
-
-column_mapping = {
-
-    "Attendance (%)":
-        "attendance",
-
-    "Internal_marks":
-        "internal_marks",
-
-    "Assignments_Avg":
-        "assignment_score",
-
-    "Quizzes_score":
-        "quiz_score",
-
-    "Previous_gpa":
-        "previous_gpa",
-
-    "Semester":
-        "semester",
-
-    "Gender":
-        "gender"
+COLUMN_MAPPING = {
+    "Attendance (%)": "attendance",
+    "Internal_marks": "internal_marks",
+    "Assignments_Avg": "assignment_score",
+    "Quizzes_score": "quiz_score",
+    "Previous_gpa": "previous_gpa",
+    "Semester": "semester",
+    "Gender": "gender",
 }
 
 
-df = df.rename(
-    columns=column_mapping
-)
-
-# ============================================================
-# CONVERT SEMESTER TO NUMERIC
-# ============================================================
-
-semester_mapping = {
+SEMESTER_MAPPING = {
     "I/I": 1,
     "I/II": 2,
     "II/I": 3,
@@ -87,326 +56,162 @@ semester_mapping = {
     "IV/II": 8,
 }
 
-df["semester"] = df["semester"].replace(semester_mapping)
 
-
-# ============================================================
-# 4. CHECK REQUIRED COLUMNS
-# ============================================================
-
-required_columns = [
-
+NUMERIC_FEATURES = [
     "attendance",
-
     "internal_marks",
-
     "assignment_score",
-
     "quiz_score",
-
     "previous_gpa",
-
     "semester",
+]
 
+
+ML_FEATURES = [
+    "attendance",
+    "internal_marks",
+    "assignment_score",
+    "quiz_score",
+    "previous_gpa",
+    "semester",
     "gender",
-
-    "Final_Score"
 ]
 
 
-missing_columns = [
+def preprocess_dataset() -> pd.DataFrame:
+    print("Loading dataset from:")
+    print(INPUT_PATH)
 
-    column
-    for column in required_columns
-    if column not in df.columns
+    if not INPUT_PATH.exists():
+        raise FileNotFoundError(
+            f"Dataset not found: {INPUT_PATH}"
+        )
 
-]
+    dataframe = pd.read_csv(INPUT_PATH)
 
+    original_rows = len(dataframe)
 
-if missing_columns:
-
-    raise ValueError(
-        "Missing required columns: "
-        + str(missing_columns)
+    dataframe = dataframe.rename(
+        columns=COLUMN_MAPPING
     )
 
-
-print(
-    "\nAll required columns are present."
-)
-
-
-# ============================================================
-# 5. DISPLAY MISSING VALUES
-# ============================================================
-
-print(
-    "\n========== MISSING VALUES =========="
-)
-
-print(
-    df[required_columns]
-    .isnull()
-    .sum()
-)
-
-
-# ============================================================
-# 6. REMOVE ROWS WITH MISSING REQUIRED VALUES
-# ============================================================
-
-before_rows = len(
-    df
-)
-
-
-df = df.dropna(
-    subset=required_columns
-)
-
-
-after_rows = len(
-    df
-)
-
-
-rows_removed = (
-    before_rows
-    - after_rows
-)
-
-
-print(
-    f"\nRows removed due to missing values: "
-    f"{rows_removed}"
-)
-
-
-print(
-    f"Rows remaining: {after_rows}"
-)
-
-
-# ============================================================
-# 7. CREATE ACADEMIC RISK TARGET
-# ============================================================
-
-def create_academic_risk(
-    final_score
-):
-
-    if final_score >= 80:
-
-        return "Low Risk"
-
-    elif final_score >= 60:
-
-        return "Medium Risk"
-
-    else:
-
-        return "High Risk"
-
-
-df[
-    "AcademicRisk"
-] = df[
-    "Final_Score"
-].apply(
-    create_academic_risk
-)
-
-
-# ============================================================
-# 8. DISPLAY ACADEMIC RISK DISTRIBUTION
-# ============================================================
-
-print(
-    "\n========== ACADEMIC RISK DISTRIBUTION =========="
-)
-
-print(
-    df[
-        "AcademicRisk"
-    ].value_counts()
-)
-
-
-# ============================================================
-# 9. KEEP ONLY BACKEND-SUPPORTED ML FEATURES
-# ============================================================
-
-ml_features = [
-
-    "attendance",
-
-    "internal_marks",
-
-    "assignment_score",
-
-    "quiz_score",
-
-    "previous_gpa",
-
-    "semester",
-
-    "gender"
-
-]
-
-
-processed_df = df[
-    ml_features
-    + [
-        "AcademicRisk"
+    missing_columns = [
+        column
+        for column in ML_FEATURES
+        if column not in dataframe.columns
     ]
-].copy()
 
+    if missing_columns:
+        raise ValueError(
+            "Missing required columns: "
+            f"{missing_columns}"
+        )
 
-# ============================================================
-# 10. DISPLAY FINAL ML FEATURES
-# ============================================================
+    dataframe["semester"] = (
+        dataframe["semester"]
+        .replace(SEMESTER_MAPPING)
+    )
 
-print(
-    "\n========== FINAL ML FEATURES =========="
-)
+    for column in NUMERIC_FEATURES:
+        dataframe[column] = pd.to_numeric(
+            dataframe[column],
+            errors="coerce",
+        )
 
-print(
-    ml_features
-)
+    dataframe["gender"] = (
+        dataframe["gender"]
+        .astype("string")
+        .str.strip()
+        .str.title()
+    )
 
+    dataframe = dataframe.dropna(
+        subset=ML_FEATURES
+    )
 
-# ============================================================
-# 11. DISPLAY SEMESTER DISTRIBUTION
-# ============================================================
+    dataframe["attendance"] = (
+        dataframe["attendance"].clip(0, 100)
+    )
 
-print(
-    "\n========== SEMESTER DISTRIBUTION =========="
-)
+    dataframe["internal_marks"] = (
+        dataframe["internal_marks"].clip(0, 100)
+    )
 
-print(
-    processed_df[
-        "semester"
-    ].value_counts()
-    .sort_index()
-)
+    dataframe["assignment_score"] = (
+        dataframe["assignment_score"].clip(
+            0,
+            100,
+        )
+    )
 
+    dataframe["quiz_score"] = (
+        dataframe["quiz_score"].clip(0, 100)
+    )
 
-# ============================================================
-# 12. DISPLAY GENDER DISTRIBUTION
-# ============================================================
+    dataframe["previous_gpa"] = (
+        dataframe["previous_gpa"].clip(0, 4)
+    )
 
-print(
-    "\n========== GENDER DISTRIBUTION =========="
-)
+    dataframe = dataframe[
+        dataframe["semester"].between(1, 8)
+    ].copy()
 
-print(
-    processed_df[
-        "gender"
-    ].value_counts()
-)
+    dataframe["semester"] = (
+        dataframe["semester"].astype(int)
+    )
 
+    dataframe = add_academic_risk_target(
+        dataframe
+    )
 
-# ============================================================
-# 13. DISPLAY PROCESSED DATASET SHAPE
-# ============================================================
+    processed_dataframe = dataframe[
+        ML_FEATURES
+        + [
+            "performance_score",
+            "AcademicRisk",
+        ]
+    ].copy()
 
-print(
-    "\n========== PROCESSED DATASET SHAPE =========="
-)
+    OUTPUT_PATH.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
-print(
-    processed_df.shape
-)
+    REPORT_PATH.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
+    processed_dataframe.to_csv(
+        OUTPUT_PATH,
+        index=False,
+    )
 
-# ============================================================
-# 14. DISPLAY PROCESSED DATASET PREVIEW
-# ============================================================
+    final_rows = len(processed_dataframe)
 
-print(
-    "\n========== PROCESSED DATASET PREVIEW =========="
-)
+    risk_distribution = (
+        processed_dataframe["AcademicRisk"]
+        .value_counts()
+    )
 
-print(
-    processed_df.head()
-)
-
-
-# ============================================================
-# 15. CHECK PROCESSED DATASET FOR MISSING VALUES
-# ============================================================
-
-print(
-    "\n========== PROCESSED DATASET MISSING VALUES =========="
-)
-
-print(
-    processed_df.isnull().sum()
-)
-
-
-# ============================================================
-# 16. CREATE OUTPUT DIRECTORIES
-# ============================================================
-
-OUTPUT_PATH.parent.mkdir(
-    parents=True,
-    exist_ok=True
-)
-
-REPORT_PATH.parent.mkdir(
-    parents=True,
-    exist_ok=True
-)
-
-
-# ============================================================
-# 17. SAVE PROCESSED DATASET
-# ============================================================
-
-processed_df.to_csv(
-    OUTPUT_PATH,
-    index=False
-)
-
-
-print(
-    f"\nProcessed dataset saved to: "
-    f"{OUTPUT_PATH}"
-)
-
-
-# ============================================================
-# 18. CREATE PREPROCESSING REPORT
-# ============================================================
-
-report_content = f"""
+    report_content = f"""
 # Preprocessing Report
 
-## Dataset
-
-Input file:
+## Input
 
 `{INPUT_PATH}`
 
-Output file:
+## Output
 
 `{OUTPUT_PATH}`
 
-## Dataset Shape
+## Rows
 
-Original rows: {before_rows}
+- Original rows: {original_rows}
+- Final rows: {final_rows}
+- Removed rows: {original_rows - final_rows}
 
-Rows removed: {rows_removed}
-
-Final rows: {after_rows}
-
-Final columns: {len(processed_df.columns)}
-
-## ML Features
-
-The final backend-compatible ML features are:
+## Features
 
 - attendance
 - internal_marks
@@ -416,56 +221,55 @@ The final backend-compatible ML features are:
 - semester
 - gender
 
-## Target
+## Target Method
 
-Target variable:
+The target is generated from an interpretable weighted
+academic performance score:
 
-`AcademicRisk`
+- Attendance: 25%
+- Internal marks: 20%
+- Assignment score: 15%
+- Quiz score: 15%
+- Previous GPA: 25%
 
-## Academic Risk Distribution
+Risk categories:
 
-{df["AcademicRisk"].value_counts().to_string()}
+- Performance score below 50: High Risk
+- Performance score from 50 to below 70: Medium Risk
+- Performance score 70 or above: Low Risk
 
-## Semester Distribution
+## Risk Distribution
 
-{processed_df["semester"].value_counts().sort_index().to_string()}
-
-## Gender Distribution
-
-{processed_df["gender"].value_counts().to_string()}
+{risk_distribution.to_string()}
 
 ## Missing Values
 
-{processed_df.isnull().sum().to_string()}
-
-## Encoding
-
-Gender and semester are kept as raw values.
-
-Encoding is handled automatically by the sklearn Pipeline using OneHotEncoder.
-
-The preprocessing script does not manually create:
-
-- Gender_Male
-- Semester_1
-- Semester_2
-- Semester_3
-- etc.
+{processed_dataframe.isnull().sum().to_string()}
 """
 
+    REPORT_PATH.write_text(
+        report_content.strip(),
+        encoding="utf-8",
+    )
 
-REPORT_PATH.write_text(
-    report_content,
-    encoding="utf-8"
-)
+    print(
+        "\nRisk distribution:"
+    )
+
+    print(risk_distribution)
+
+    print(
+        "\nProcessed dataset saved to:"
+    )
+
+    print(OUTPUT_PATH)
+
+    return processed_dataframe
 
 
-print(
-    f"Preprocessing report saved to: "
-    f"{REPORT_PATH}"
-)
+if __name__ == "__main__":
+    preprocess_dataset()
 
-
-print(
-    "\n✅ NEW DATASET PREPROCESSING COMPLETED SUCCESSFULLY."
-)
+    print(
+        "\nPreprocessing completed successfully."
+    )

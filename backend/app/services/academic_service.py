@@ -7,7 +7,11 @@ from app.schemas.academic_record import AcademicRecordCreate
 
 
 def get_academic_records(db: Session):
-    return db.query(AcademicRecord).all()
+    return (
+        db.query(AcademicRecord)
+        .order_by(AcademicRecord.id.desc())
+        .all()
+    )
 
 
 def get_academic_record(
@@ -35,7 +39,9 @@ def create_academic_record(
 ):
     student = (
         db.query(Student)
-        .filter(Student.id == academic_record.student_id)
+        .filter(
+            Student.id == academic_record.student_id
+        )
         .first()
     )
 
@@ -48,8 +54,10 @@ def create_academic_record(
     existing_record = (
         db.query(AcademicRecord)
         .filter(
-            AcademicRecord.student_id == academic_record.student_id,
-            AcademicRecord.semester == academic_record.semester,
+            AcademicRecord.student_id
+            == academic_record.student_id,
+            AcademicRecord.semester
+            == academic_record.semester,
         )
         .first()
     )
@@ -57,7 +65,10 @@ def create_academic_record(
     if existing_record:
         raise HTTPException(
             status_code=400,
-            detail="Academic record already exists for this semester.",
+            detail=(
+                "Academic record already exists "
+                "for this student and semester."
+            ),
         )
 
     db_record = AcademicRecord(
@@ -65,6 +76,69 @@ def create_academic_record(
     )
 
     db.add(db_record)
+    db.commit()
+    db.refresh(db_record)
+
+    return db_record
+
+
+def update_academic_record(
+    db: Session,
+    record_id: int,
+    academic_record: AcademicRecordCreate,
+):
+    db_record = (
+        db.query(AcademicRecord)
+        .filter(AcademicRecord.id == record_id)
+        .first()
+    )
+
+    if db_record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Academic record not found.",
+        )
+
+    student = (
+        db.query(Student)
+        .filter(
+            Student.id == academic_record.student_id
+        )
+        .first()
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student not found.",
+        )
+
+    duplicate_record = (
+        db.query(AcademicRecord)
+        .filter(
+            AcademicRecord.student_id
+            == academic_record.student_id,
+            AcademicRecord.semester
+            == academic_record.semester,
+            AcademicRecord.id != record_id,
+        )
+        .first()
+    )
+
+    if duplicate_record:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Another academic record already "
+                "exists for this student and semester."
+            ),
+        )
+
+    updated_data = academic_record.model_dump()
+
+    for field, value in updated_data.items():
+        setattr(db_record, field, value)
+
     db.commit()
     db.refresh(db_record)
 

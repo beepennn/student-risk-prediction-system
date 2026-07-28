@@ -72,46 +72,42 @@ function LoginForm() {
         loginResponse.access_token,
       );
 
+      const role = user.role.toLowerCase();
+
+      let roleHome = "/login";
+
+      if (role === "admin") {
+        roleHome = "/admin";
+      } else if (role === "teacher") {
+        roleHome = "/teacher";
+      } else if (role === "student") {
+        roleHome = "/student";
+      } else {
+        setLoginError(
+          "Your account has an unsupported role.",
+        );
+
+        return;
+      }
+
       const locationState =
         location.state as LocationState | null;
 
-      if (locationState?.from) {
-        navigate(locationState.from, {
+      const previousPath = locationState?.from;
+
+      const previousPathMatchesRole =
+        previousPath === roleHome ||
+        previousPath?.startsWith(
+          `${roleHome}/`,
+        );
+
+      navigate(
+        previousPathMatchesRole && previousPath
+          ? previousPath
+          : roleHome,
+        {
           replace: true,
-        });
-
-        return;
-      }
-
-      const normalisedRole =
-        user.role.toLowerCase();
-
-      if (normalisedRole === "admin") {
-        navigate("/admin", {
-          replace: true,
-        });
-
-        return;
-      }
-
-      if (normalisedRole === "teacher") {
-        navigate("/teacher", {
-          replace: true,
-        });
-
-        return;
-      }
-
-      if (normalisedRole === "student") {
-        navigate("/student", {
-          replace: true,
-        });
-
-        return;
-      }
-
-      setLoginError(
-        "Your account has an unsupported role.",
+        },
       );
     } catch (error) {
       console.error("Login error:", error);
