@@ -47,10 +47,10 @@ function TeacherStudentsPage() {
     const searchValue = searchTerm.toLowerCase();
 
     return (
-      student.student_name.toLowerCase().includes(searchValue) ||
+      (student.student_name ?? "Student").toLowerCase().includes(searchValue) ||
       student.roll_number.toLowerCase().includes(searchValue) ||
       student.department.toLowerCase().includes(searchValue) ||
-      student.risk_level.toLowerCase().includes(searchValue)
+      (student.risk_level ?? "Not Predicted").toLowerCase().includes(searchValue)
     );
   });
 
@@ -197,7 +197,7 @@ function TeacherStudentsPage() {
                   >
                     <td className="px-4 py-4">
                       <p className="font-semibold text-gray-900">
-                        {student.student_name}
+                        {student.student_name ?? "Student"}
                       </p>
 
                       <p className="text-sm text-gray-500">
@@ -230,10 +230,10 @@ function TeacherStudentsPage() {
                     <td className="px-4 py-4 text-center">
                       <span
                         className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${getRiskClass(
-                          student.risk_level,
+                          student.risk_level ?? "Not Predicted",
                         )}`}
                       >
-                        {student.risk_level}
+                        {student.risk_level ?? "Not Predicted"}
                       </span>
                     </td>
 

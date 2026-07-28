@@ -4,30 +4,49 @@ import {
   useLocation,
 } from "react-router-dom";
 
-import { useAuth } from "../context/useAuth";
+import {
+  useAuth,
+} from "../context/useAuth";
 
-import type { User } from "../types/auth";
+import type {
+  User,
+} from "../types/auth";
 
 interface ProtectedRouteProps {
   allowedRoles?: User["role"][];
 }
 
-function getRoleHome(
-  role: User["role"],
+function normalizeRole(
+  role: string,
 ): string {
-  switch (role) {
-    case "Admin":
-      return "/admin";
+  return role
+    .trim()
+    .toLowerCase();
+}
 
-    case "Teacher":
-      return "/teacher";
+function getRoleHome(
+  role: string,
+): string {
+  const normalizedRole =
+    normalizeRole(role);
 
-    case "Student":
-      return "/student";
-
-    default:
-      return "/login";
+  if (normalizedRole === "admin") {
+    return "/admin";
   }
+
+  if (
+    normalizedRole === "teacher"
+  ) {
+    return "/teacher";
+  }
+
+  if (
+    normalizedRole === "student"
+  ) {
+    return "/student";
+  }
+
+  return "/login";
 }
 
 function ProtectedRoute({
@@ -48,7 +67,8 @@ function ProtectedRoute({
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
 
           <p className="mt-4 text-sm font-medium text-gray-600">
-            Restoring your session...
+            Restoring your
+            session...
           </p>
         </div>
       </div>
@@ -61,22 +81,42 @@ function ProtectedRoute({
         to="/login"
         replace
         state={{
-          from: location.pathname,
+          from:
+            location.pathname,
         }}
       />
     );
   }
 
-  if (
-    allowedRoles &&
-    !allowedRoles.includes(user.role)
-  ) {
-    return (
-      <Navigate
-        to={getRoleHome(user.role)}
-        replace
-      />
-    );
+  if (allowedRoles) {
+    const userRole =
+      normalizeRole(
+        String(user.role),
+      );
+
+    const normalizedAllowedRoles =
+      allowedRoles.map(
+        (role) =>
+          normalizeRole(
+            String(role),
+          ),
+      );
+
+    const roleIsAllowed =
+      normalizedAllowedRoles.includes(
+        userRole,
+      );
+
+    if (!roleIsAllowed) {
+      return (
+        <Navigate
+          to={getRoleHome(
+            String(user.role),
+          )}
+          replace
+        />
+      );
+    }
   }
 
   return <Outlet />;

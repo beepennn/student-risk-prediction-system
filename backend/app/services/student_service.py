@@ -665,6 +665,73 @@ def get_student_analytics(
         )
     )
 
+    history = []
+
+    for record in academic_history:
+        is_latest_record = (
+            latest_record is not None
+            and record.id == latest_record.id
+        )
+
+        record_created_at = getattr(
+            record,
+            "created_at",
+            None,
+        )
+
+        prediction_date = None
+        risk_level = None
+
+        if (
+            is_latest_record
+            and latest_prediction
+        ):
+            risk_level = (
+                latest_prediction.risk_level
+            )
+
+            if (
+                latest_prediction.prediction_date
+            ):
+                prediction_date = (
+                    latest_prediction
+                    .prediction_date
+                    .isoformat()
+                )
+
+        record_date = (
+            prediction_date
+            or (
+                record_created_at.isoformat()
+                if record_created_at
+                else None
+            )
+        )
+
+        history.append(
+            {
+                "id": record.id,
+                "semester": record.semester,
+                "date": record_date,
+                "attendance": float(
+                    record.attendance
+                ),
+                "internal_marks": float(
+                    record.internal_marks
+                ),
+                "assignment_score": float(
+                    record.assignment_score
+                ),
+                "quiz_score": float(
+                    record.quiz_score
+                ),
+                "previous_gpa": float(
+                    record.previous_gpa
+                ),
+                "risk_level": risk_level,
+            }
+        )
+
     return {
         "latest": {
             "attendance": (
@@ -683,8 +750,7 @@ def get_student_analytics(
             ),
             "assignment_score": (
                 float(
-                    latest_record
-                    .assignment_score
+                    latest_record.assignment_score
                 )
                 if latest_record
                 else None
@@ -717,25 +783,5 @@ def get_student_analytics(
                 len(notifications)
             ),
         },
-        "history": [
-            {
-                "semester": record.semester,
-                "attendance": float(
-                    record.attendance
-                ),
-                "internal_marks": float(
-                    record.internal_marks
-                ),
-                "assignment_score": float(
-                    record.assignment_score
-                ),
-                "quiz_score": float(
-                    record.quiz_score
-                ),
-                "previous_gpa": float(
-                    record.previous_gpa
-                ),
-            }
-            for record in academic_history
-        ],
+        "history": history,
     }

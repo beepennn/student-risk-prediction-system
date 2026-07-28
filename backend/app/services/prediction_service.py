@@ -1,7 +1,14 @@
+from __future__ import annotations
+
+from math import isclose
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models.prediction import Prediction
+from app.models.prediction import (
+    Prediction,
+)
+
 from app.models.student import Student
 
 from app.schemas.prediction import (
@@ -9,14 +16,33 @@ from app.schemas.prediction import (
     PredictionResponse,
 )
 
-from app.services.audit_service import create_audit_log
-from app.core.api_response import success_response
+from app.services.audit_service import (
+    create_audit_log,
+)
 
-from app.services.ml_service import predict_student_risk
-from app.services.academic_service import get_latest_academic_record
-from app.services.recommendation_service import generate_recommendation
-from app.services.notification_service import generate_notification
-from app.services.shap_service import save_shap_explanations
+from app.core.api_response import (
+    success_response,
+)
+
+from app.services.ml_service import (
+    predict_student_risk,
+)
+
+from app.services.academic_service import (
+    get_latest_academic_record,
+)
+
+from app.services.recommendation_service import (
+    generate_recommendation,
+)
+
+from app.services.notification_service import (
+    generate_notification,
+)
+
+from app.services.shap_service import (
+    save_shap_explanations,
+)
 
 
 def get_predictions(
@@ -30,7 +56,8 @@ def get_predictions(
 
     if risk_level:
         query = query.filter(
-            Prediction.risk_level == risk_level
+            Prediction.risk_level
+            == risk_level
         )
 
     if sort_order.lower() == "asc":
@@ -55,7 +82,10 @@ def get_prediction(
 ):
     prediction = (
         db.query(Prediction)
-        .filter(Prediction.id == prediction_id)
+        .filter(
+            Prediction.id
+            == prediction_id
+        )
         .first()
     )
 
@@ -74,7 +104,10 @@ def create_prediction(
 ):
     student = (
         db.query(Student)
-        .filter(Student.id == prediction.student_id)
+        .filter(
+            Student.id
+            == prediction.student_id
+        )
         .first()
     )
 
@@ -102,12 +135,34 @@ def save_prediction(
 ):
     prediction = Prediction(
         student_id=student_id,
-        risk_level=prediction_data["risk_level"],
-        low_probability=prediction_data["low_probability"],
-        medium_probability=prediction_data["medium_probability"],
-        high_probability=prediction_data["high_probability"],
-        confidence=prediction_data["confidence"],
-        confidence_percentage=prediction_data["confidence_percentage"],
+        risk_level=(
+            prediction_data[
+                "risk_level"
+            ]
+        ),
+        low_probability=(
+            prediction_data[
+                "low_probability"
+            ]
+        ),
+        medium_probability=(
+            prediction_data[
+                "medium_probability"
+            ]
+        ),
+        high_probability=(
+            prediction_data[
+                "high_probability"
+            ]
+        ),
+        confidence=(
+            prediction_data["confidence"]
+        ),
+        confidence_percentage=(
+            prediction_data[
+                "confidence_percentage"
+            ]
+        ),
     )
 
     db.add(prediction)
@@ -124,10 +179,13 @@ def get_latest_prediction(
     return (
         db.query(Prediction)
         .filter(
-            Prediction.student_id == student_id
+            Prediction.student_id
+            == student_id
         )
         .order_by(
-            Prediction.prediction_date.desc()
+            Prediction
+            .prediction_date
+            .desc()
         )
         .first()
     )
@@ -140,7 +198,8 @@ def get_student_predictions(
     return (
         db.query(Prediction)
         .filter(
-            Prediction.student_id == student_id
+            Prediction.student_id
+            == student_id
         )
         .order_by(
             Prediction.id.desc()
@@ -162,18 +221,21 @@ def get_admin_predictions(
         db.query(Prediction)
         .join(
             Student,
-            Prediction.student_id == Student.id,
+            Prediction.student_id
+            == Student.id,
         )
     )
 
     if risk_level:
         query = query.filter(
-            Prediction.risk_level == risk_level
+            Prediction.risk_level
+            == risk_level
         )
 
     if semester is not None:
         query = query.filter(
-            Student.semester == semester
+            Student.semester
+            == semester
         )
 
     if department:
@@ -185,11 +247,15 @@ def get_admin_predictions(
 
     if sort_order.lower() == "asc":
         query = query.order_by(
-            Prediction.prediction_date.asc()
+            Prediction
+            .prediction_date
+            .asc()
         )
     else:
         query = query.order_by(
-            Prediction.prediction_date.desc()
+            Prediction
+            .prediction_date
+            .desc()
         )
 
     return (
@@ -206,7 +272,10 @@ def delete_prediction(
 ):
     prediction = (
         db.query(Prediction)
-        .filter(Prediction.id == prediction_id)
+        .filter(
+            Prediction.id
+            == prediction_id
+        )
         .first()
     )
 
@@ -228,7 +297,67 @@ def delete_prediction(
     )
 
     return success_response(
-        message="Prediction deleted successfully."
+        message=(
+            "Prediction deleted "
+            "successfully."
+        )
+    )
+
+
+def prediction_matches(
+    saved_prediction: Prediction,
+    generated_prediction: dict,
+) -> bool:
+    if (
+        saved_prediction.risk_level
+        != generated_prediction[
+            "risk_level"
+        ]
+    ):
+        return False
+
+    return all(
+        [
+            isclose(
+                float(
+                    saved_prediction
+                    .low_probability
+                ),
+                float(
+                    generated_prediction[
+                        "low_probability"
+                    ]
+                ),
+                rel_tol=1e-9,
+                abs_tol=1e-9,
+            ),
+            isclose(
+                float(
+                    saved_prediction
+                    .medium_probability
+                ),
+                float(
+                    generated_prediction[
+                        "medium_probability"
+                    ]
+                ),
+                rel_tol=1e-9,
+                abs_tol=1e-9,
+            ),
+            isclose(
+                float(
+                    saved_prediction
+                    .high_probability
+                ),
+                float(
+                    generated_prediction[
+                        "high_probability"
+                    ]
+                ),
+                rel_tol=1e-9,
+                abs_tol=1e-9,
+            ),
+        ]
     )
 
 
@@ -236,67 +365,121 @@ def generate_prediction_for_student(
     db: Session,
     student_id: int,
 ):
-    academic = get_latest_academic_record(
-        db,
-        student_id,
+    academic = (
+        get_latest_academic_record(
+            db,
+            student_id,
+        )
     )
 
     student_features = {
-        "attendance": academic.attendance,
-        "internal_marks": academic.internal_marks,
-        "assignment_score": academic.assignment_score,
-        "quiz_score": academic.quiz_score,
-        "previous_gpa": academic.previous_gpa,
+        "attendance": (
+            academic.attendance
+        ),
+        "internal_marks": (
+            academic.internal_marks
+        ),
+        "assignment_score": (
+            academic.assignment_score
+        ),
+        "quiz_score": (
+            academic.quiz_score
+        ),
+        "previous_gpa": (
+            academic.previous_gpa
+        ),
         "semester": academic.semester,
         "gender": academic.gender,
     }
 
-    prediction = predict_student_risk(
-        student_features
+    generated_prediction = (
+        predict_student_risk(
+            student_features
+        )
     )
 
-    latest_prediction = get_latest_prediction(
-        db,
-        student_id,
+    shap_values = (
+        generated_prediction.get(
+            "shap_values",
+            {},
+        )
     )
 
-    if latest_prediction:
-        if (
-            latest_prediction.risk_level == prediction["risk_level"]
-            and latest_prediction.low_probability == prediction["low_probability"]
-            and latest_prediction.medium_probability == prediction["medium_probability"]
-            and latest_prediction.high_probability == prediction["high_probability"]
-        ):
-            return PredictionResponse.model_validate(
+    latest_prediction = (
+        get_latest_prediction(
+            db,
+            student_id,
+        )
+    )
+
+    if (
+        latest_prediction
+        and prediction_matches(
+            latest_prediction,
+            generated_prediction,
+        )
+    ):
+        # /*
+        #  * The prediction has not changed, but the recommendation
+        #  * may still be an old generic recommendation.
+        #  *
+        #  * Regenerate and update it using the current academic
+        #  * features and SHAP values.
+        #  */
+        generate_recommendation(
+            db=db,
+            prediction=latest_prediction,
+            student_features=(
+                student_features
+            ),
+            shap_values=shap_values,
+        )
+
+        return (
+            PredictionResponse
+            .model_validate(
                 latest_prediction
             )
+        )
 
     saved_prediction = save_prediction(
-        db,
-        student_id,
-        prediction,
+        db=db,
+        student_id=student_id,
+        prediction_data=(
+            generated_prediction
+        ),
     )
 
     save_shap_explanations(
         db=db,
-        prediction_id=saved_prediction.id,
-        shap_values=prediction.get(
-            "shap_values",
-            {},
+        prediction_id=(
+            saved_prediction.id
         ),
+        shap_values=shap_values,
     )
 
-    recommendation = generate_recommendation(
-        db,
-        saved_prediction,
+    recommendation = (
+        generate_recommendation(
+            db=db,
+            prediction=(
+                saved_prediction
+            ),
+            student_features=(
+                student_features
+            ),
+            shap_values=shap_values,
+        )
     )
 
     generate_notification(
-        db,
-        student_id,
-        recommendation,
+        db=db,
+        student_id=student_id,
+        recommendation=recommendation,
     )
 
-    return PredictionResponse.model_validate(
-        saved_prediction
+    return (
+        PredictionResponse
+        .model_validate(
+            saved_prediction
+        )
     )

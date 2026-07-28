@@ -1,11 +1,11 @@
 export interface StudentRecommendation {
-  id?: number;
-  title?: string | null;
-  recommendation?: string | null;
-  priority?: string | null;
-  category?: string | null;
-  created_at?: string | null;
-  date?: string | null;
+  id: number;
+  prediction_id: number;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  completed_at: string | null;
 }
 
 export type StudentRecommendationsResponse =
