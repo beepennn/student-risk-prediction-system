@@ -14,6 +14,7 @@ import ForgotPasswordPage from "../../features/auth/pages/ForgotPasswordPage";
 import ResetPasswordPage from "../../features/auth/pages/ResetPasswordPage";
 
 import AdminDashboardPage from "../../features/admin/pages/AdminDashboardPage";
+import AdminStudentsPage from "../../features/admin/pages/AdminStudentsPage";
 
 import TeacherDashboardPage from "../../features/teacher/pages/TeacherDashboardPage";
 import TeacherStudentsPage from "../../features/teacher/pages/TeacherStudentsPage";
@@ -23,19 +24,19 @@ import TeacherInterventionsPage from "../../features/teacher/pages/TeacherInterv
 import StudentDashboardPage from "../../features/student/pages/StudentDashboardPage";
 import StudentProfilePage from "../../features/student/pages/StudentProfilePage";
 import StudentAnalyticsPage from "../../features/student/pages/StudentAnalyticsPage";
+import StudentPredictionsPage from "../../features/student/pages/StudentPredictionsPage";
 
 import NotFoundPage from "../../pages/NotFoundPage";
+
+import AdminAcademicRecordsPage from "../../features/admin/pages/AdminAcademicRecordsPage";
 
 function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Authentication Routes */}
+        {/* Public authentication routes */}
         <Route element={<AuthLayout />}>
-          <Route
-            path="/"
-            element={<LoginPage />}
-          />
+          <Route path="/" element={<LoginPage />} />
 
           <Route
             path="/login"
@@ -53,16 +54,26 @@ function AppRouter() {
           />
         </Route>
 
-        {/* Protected Routes */}
+        {/* Protected application routes */}
         <Route element={<ProtectedRoute />}>
           <Route element={<DashboardLayout />}>
-            {/* Admin Routes */}
+            {/* Admin */}
             <Route
               path="/admin"
               element={<AdminDashboardPage />}
             />
 
-            {/* Teacher Routes */}
+            <Route
+              path="/admin/students"
+              element={<AdminStudentsPage />}
+            />
+
+            <Route
+              path="/admin/academic-records"
+              element={<AdminAcademicRecordsPage />}
+            />
+
+            {/* Teacher */}
             <Route
               path="/teacher"
               element={<TeacherDashboardPage />}
@@ -83,7 +94,7 @@ function AppRouter() {
               element={<TeacherInterventionsPage />}
             />
 
-            {/* Student Routes */}
+            {/* Student */}
             <Route
               path="/student"
               element={<StudentDashboardPage />}
@@ -98,10 +109,14 @@ function AppRouter() {
               path="/student/analytics"
               element={<StudentAnalyticsPage />}
             />
+
+            <Route
+              path="/student/predictions"
+              element={<StudentPredictionsPage />}
+            />
           </Route>
         </Route>
 
-        {/* Page Not Found */}
         <Route
           path="*"
           element={<NotFoundPage />}

@@ -1,14 +1,18 @@
 import {
   FiActivity,
   FiBarChart2,
+  FiBookOpen,
   FiHome,
   FiLogOut,
+  FiTrendingUp,
   FiUser,
   FiUsers,
 } from "react-icons/fi";
+
 import {
   NavLink,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/context/useAuth";
@@ -21,7 +25,9 @@ interface SidebarItem {
 
 function Sidebar() {
   const { user, logout } = useAuth();
+
   const location = useLocation();
+  const navigate = useNavigate();
 
   const pathname = location.pathname;
 
@@ -30,6 +36,16 @@ function Sidebar() {
       name: "Dashboard",
       path: "/admin",
       icon: <FiHome size={20} />,
+    },
+    {
+      name: "Students",
+      path: "/admin/students",
+      icon: <FiUsers size={20} />,
+    },
+    {
+      name: "Academic Records",
+      path: "/admin/academic-records",
+      icon: <FiBookOpen size={20} />,
     },
   ];
 
@@ -67,9 +83,14 @@ function Sidebar() {
       path: "/student/analytics",
       icon: <FiBarChart2 size={20} />,
     },
+    {
+      name: "Predictions",
+      path: "/student/predictions",
+      icon: <FiTrendingUp size={20} />,
+    },
   ];
 
-  function getMenuItems() {
+  function getMenuItems(): SidebarItem[] {
     if (pathname.startsWith("/admin")) {
       return adminMenu;
     }
@@ -85,7 +106,9 @@ function Sidebar() {
     return [];
   }
 
-  function isMenuItemActive(path: string) {
+  function isMenuItemActive(
+    path: string,
+  ): boolean {
     if (
       path === "/teacher" ||
       path === "/student" ||
@@ -97,11 +120,18 @@ function Sidebar() {
     return pathname.startsWith(path);
   }
 
+  function handleLogout() {
+    logout();
+
+    navigate("/login", {
+      replace: true,
+    });
+  }
+
   const menuItems = getMenuItems();
 
   return (
     <aside className="flex min-h-screen w-64 flex-col bg-slate-900 text-white">
-      {/* Logo */}
       <div className="border-b border-slate-700 px-6 py-6">
         <h1 className="text-xl font-bold">
           StudentAlert
@@ -112,7 +142,6 @@ function Sidebar() {
         </p>
       </div>
 
-      {/* User Information */}
       <div className="border-b border-slate-700 px-6 py-5">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600">
@@ -121,7 +150,9 @@ function Sidebar() {
 
           <div className="min-w-0">
             <p className="truncate font-semibold">
-              {user?.full_name || user?.email || "User"}
+              {user?.full_name ||
+                user?.email ||
+                "User"}
             </p>
 
             <p className="truncate text-sm capitalize text-slate-400">
@@ -131,10 +162,10 @@ function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 space-y-2 px-4 py-6">
         {menuItems.map((item) => {
-          const active = isMenuItemActive(item.path);
+          const active =
+            isMenuItemActive(item.path);
 
           return (
             <NavLink
@@ -147,18 +178,16 @@ function Sidebar() {
               }`}
             >
               {item.icon}
-
               <span>{item.name}</span>
             </NavLink>
           );
         })}
       </nav>
 
-      {/* Logout */}
       <div className="border-t border-slate-700 p-4">
         <button
           type="button"
-          onClick={logout}
+          onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-red-600 hover:text-white"
         >
           <FiLogOut size={20} />
