@@ -1,312 +1,528 @@
-import pandas as pd
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any
 
 
-# ============================================================
-# PERSONALIZED RECOMMENDATION ENGINE
-# ============================================================
+SUPPORTED_FEATURES = {
+    "attendance",
+    "internal_marks",
+    "assignment_score",
+    "quiz_score",
+    "previous_gpa",
+}
 
-def generate_recommendations(
-    predicted_risk,
-    student_data,
-    shap_df
-):
+
+FEATURE_LABELS = {
+    "attendance": "Attendance",
+    "internal_marks": "Internal Marks",
+    "assignment_score": "Assignment Score",
+    "quiz_score": "Quiz Score",
+    "previous_gpa": "Previous GPA",
+}
+
+
+def safe_float(
+    value: Any,
+    default: float = 0.0,
+) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def normalize_feature_name(
+    feature_name: str,
+) -> str | None:
     """
-    Generate personalized recommendations
-    based on predicted academic risk,
-    student features, and SHAP explanations.
+    Convert transformed SHAP names such as
+    numeric__attendance into attendance.
     """
 
-    recommendations = []
+    normalized_name = (
+        feature_name.strip().lower()
+    )
+
+    for feature in SUPPORTED_FEATURES:
+        if feature in normalized_name:
+            return feature
+
+    return None
 
 
-    # ========================================================
-    # 1. RISK-BASED RECOMMENDATION
-    # ========================================================
+def extract_shap_impacts(
+    shap_values: Mapping[str, Any] | None,
+) -> dict[str, float]:
+    impacts = {
+        feature: 0.0
+        for feature in SUPPORTED_FEATURES
+    }
+
+    if not shap_values:
+        return impacts
+
+    for (
+        feature_name,
+        shap_information,
+    ) in shap_values.items():
+        normalized_feature = (
+            normalize_feature_name(
+                str(feature_name)
+            )
+        )
+
+        if normalized_feature is None:
+            continue
+
+        if isinstance(
+            shap_information,
+            Mapping,
+        ):
+            shap_value = safe_float(
+                shap_information.get(
+                    "shap_value",
+                    0.0,
+                )
+            )
+        else:
+            shap_value = safe_float(
+                shap_information
+            )
+
+        impacts[normalized_feature] = (
+            shap_value
+        )
+
+    return impacts
+
+
+def create_focus_area(
+    feature: str,
+    value: float,
+    severe_threshold: float,
+    moderate_threshold: float,
+    watch_threshold: float,
+    severe_advice: str,
+    moderate_advice: str,
+    watch_advice: str,
+    shap_impact: float,
+) -> dict[str, Any] | None:
+    if value < severe_threshold:
+        severity = 3
+        deficiency = (
+            severe_threshold - value
+        )
+        advice = severe_advice
+
+    elif value < moderate_threshold:
+        severity = 2
+        deficiency = (
+            moderate_threshold - value
+        )
+        advice = moderate_advice
+
+    elif value < watch_threshold:
+        severity = 1
+        deficiency = (
+            watch_threshold - value
+        )
+        advice = watch_advice
+
+    else:
+        return None
+
+    return {
+        "feature": feature,
+        "label": FEATURE_LABELS[feature],
+        "value": value,
+        "severity": severity,
+        "deficiency": deficiency,
+        "shap_impact": shap_impact,
+        "advice": advice,
+    }
+
+
+def collect_focus_areas(
+    student_data: Mapping[str, Any],
+    shap_values: Mapping[str, Any] | None,
+) -> list[dict[str, Any]]:
+    shap_impacts = extract_shap_impacts(
+        shap_values
+    )
+
+    attendance = safe_float(
+        student_data.get("attendance")
+    )
+
+    internal_marks = safe_float(
+        student_data.get(
+            "internal_marks"
+        )
+    )
+
+    assignment_score = safe_float(
+        student_data.get(
+            "assignment_score"
+        )
+    )
+
+    quiz_score = safe_float(
+        student_data.get(
+            "quiz_score"
+        )
+    )
+
+    previous_gpa = safe_float(
+        student_data.get(
+            "previous_gpa"
+        )
+    )
+
+    possible_focus_areas = [
+        create_focus_area(
+            feature="attendance",
+            value=attendance,
+            severe_threshold=60,
+            moderate_threshold=75,
+            watch_threshold=85,
+            severe_advice=(
+                "Create an immediate attendance recovery plan, "
+                "review missed lessons and meet the class teacher."
+            ),
+            moderate_advice=(
+                "Improve weekly attendance and review lessons "
+                "missed during absent days."
+            ),
+            watch_advice=(
+                "Maintain more regular attendance to prevent "
+                "future learning gaps."
+            ),
+            shap_impact=shap_impacts[
+                "attendance"
+            ],
+        ),
+        create_focus_area(
+            feature="internal_marks",
+            value=internal_marks,
+            severe_threshold=40,
+            moderate_threshold=60,
+            watch_threshold=75,
+            severe_advice=(
+                "Arrange subject-focused tutoring and prepare "
+                "a weekly revision plan for weak topics."
+            ),
+            moderate_advice=(
+                "Review weak subjects with the teacher and "
+                "practise more internal assessment questions."
+            ),
+            watch_advice=(
+                "Continue targeted revision to improve "
+                "internal assessment performance."
+            ),
+            shap_impact=shap_impacts[
+                "internal_marks"
+            ],
+        ),
+        create_focus_area(
+            feature="assignment_score",
+            value=assignment_score,
+            severe_threshold=40,
+            moderate_threshold=60,
+            watch_threshold=75,
+            severe_advice=(
+                "Complete missing assignments immediately and "
+                "request teacher feedback before the next submission."
+            ),
+            moderate_advice=(
+                "Use an assignment schedule and improve each "
+                "submission using teacher feedback."
+            ),
+            watch_advice=(
+                "Improve assignment consistency and submit "
+                "work before the deadline."
+            ),
+            shap_impact=shap_impacts[
+                "assignment_score"
+            ],
+        ),
+        create_focus_area(
+            feature="quiz_score",
+            value=quiz_score,
+            severe_threshold=40,
+            moderate_threshold=60,
+            watch_threshold=75,
+            severe_advice=(
+                "Begin short daily quiz practice and revise "
+                "foundational concepts with teacher support."
+            ),
+            moderate_advice=(
+                "Practise topic-based quizzes every week and "
+                "review incorrect answers."
+            ),
+            watch_advice=(
+                "Continue regular quiz practice to strengthen "
+                "recall and accuracy."
+            ),
+            shap_impact=shap_impacts[
+                "quiz_score"
+            ],
+        ),
+        create_focus_area(
+            feature="previous_gpa",
+            value=previous_gpa,
+            severe_threshold=2.0,
+            moderate_threshold=2.8,
+            watch_threshold=3.3,
+            severe_advice=(
+                "Prepare a semester recovery plan with a mentor "
+                "and prioritise subjects with the lowest grades."
+            ),
+            moderate_advice=(
+                "Set subject-wise GPA improvement targets and "
+                "review progress every two weeks."
+            ),
+            watch_advice=(
+                "Maintain consistent study habits and focus on "
+                "subjects reducing the overall GPA."
+            ),
+            shap_impact=shap_impacts[
+                "previous_gpa"
+            ],
+        ),
+    ]
+
+    focus_areas = [
+        area
+        for area in possible_focus_areas
+        if area is not None
+    ]
+
+    focus_areas.sort(
+        key=lambda area: (
+            area["severity"],
+            abs(area["shap_impact"]),
+            area["deficiency"],
+        ),
+        reverse=True,
+    )
+
+    return focus_areas
+
+
+def build_title(
+    predicted_risk: str,
+    focus_areas: list[dict[str, Any]],
+) -> str:
+    if not focus_areas:
+        if predicted_risk == "Low Risk":
+            return (
+                "Maintain Strong Academic Performance"
+            )
+
+        return (
+            "Continue Academic Monitoring"
+        )
+
+    focus_labels = [
+        str(area["label"])
+        for area in focus_areas[:2]
+    ]
+
+    focus_text = " and ".join(
+        focus_labels
+    )
 
     if predicted_risk == "High Risk":
-
-        recommendations.append(
-            "The student is at high academic risk. "
-            "Immediate academic support and close monitoring are recommended."
+        title = (
+            f"Immediate Support for {focus_text}"
         )
 
     elif predicted_risk == "Medium Risk":
-
-        recommendations.append(
-            "The student is at medium academic risk. "
-            "Academic progress should be monitored regularly."
+        title = (
+            f"Focused Improvement in {focus_text}"
         )
 
     else:
-
-        recommendations.append(
-            "The student is at low academic risk. "
-            "Continue maintaining consistent academic performance."
+        title = (
+            f"Strengthen {focus_text}"
         )
 
+    return title[:200]
 
-    # ========================================================
-    # 2. ATTENDANCE RECOMMENDATION
-    # ========================================================
 
-    attendance = float(
-        student_data["AttendanceRate"].iloc[0]
-    )
-
-    if attendance < 75:
-
-        recommendations.append(
-            "Attendance is below 75%. "
-            "The student should improve class attendance "
-            "to reduce the risk of academic difficulties."
+def build_description(
+    predicted_risk: str,
+    focus_areas: list[dict[str, Any]],
+) -> str:
+    if predicted_risk == "High Risk":
+        introduction = (
+            "The student is currently at high academic risk "
+            "and requires prompt, closely monitored support."
         )
 
-    elif attendance < 85:
-
-        recommendations.append(
-            "Attendance is moderate. "
-            "Maintaining regular class attendance is recommended."
+    elif predicted_risk == "Medium Risk":
+        introduction = (
+            "The student is currently at medium academic risk "
+            "and needs focused improvement and regular reviews."
         )
 
     else:
-
-        recommendations.append(
-            "Attendance is good. "
-            "Continue maintaining regular class attendance."
+        introduction = (
+            "The student is currently at low academic risk and "
+            "should continue maintaining consistent performance."
         )
 
+    if not focus_areas:
+        description = (
+            f"{introduction} Continue regular monitoring, "
+            "maintain attendance and follow the current study routine."
+        )
 
-    # ========================================================
-    # 3. STUDY HOURS PER WEEK
-    # ========================================================
+        return description[:500]
 
-    study_hours_week = float(
-        student_data[
-            "StudyHoursPerWeek"
-        ].iloc[0]
+    advice = [
+        str(area["advice"])
+        for area in focus_areas[:3]
+    ]
+
+    description = " ".join(
+        [introduction] + advice
     )
 
-    if study_hours_week < 10:
-
-        recommendations.append(
-            "Weekly study time is low. "
-            "The student should gradually increase dedicated study time."
+    if len(description) > 500:
+        description = (
+            description[:497].rstrip()
+            + "..."
         )
 
-    elif study_hours_week < 20:
-
-        recommendations.append(
-            "Weekly study time is moderate. "
-            "Maintaining a consistent study schedule is recommended."
-        )
-
-    else:
-
-        recommendations.append(
-            "The student has strong weekly study habits. "
-            "Continue maintaining consistent study time."
-        )
+    return description
 
 
-    # ========================================================
-    # 4. PREVIOUS GRADE
-    # ========================================================
+def generate_personalized_recommendation(
+    predicted_risk: str,
+    student_data: Mapping[str, Any],
+    shap_values: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Generate a personalised recommendation using
+    academic values and SHAP feature contributions.
+    """
 
-    previous_grade = float(
-        student_data[
-            "PreviousGrade"
-        ].iloc[0]
+    focus_areas = collect_focus_areas(
+        student_data=student_data,
+        shap_values=shap_values,
     )
 
-    if previous_grade < 60:
+    priority_mapping = {
+        "High Risk": "High",
+        "Medium Risk": "Medium",
+        "Low Risk": "Low",
+    }
 
-        recommendations.append(
-            "Previous academic performance is low. "
-            "Additional academic support and focused revision are recommended."
-        )
+    return {
+        "title": build_title(
+            predicted_risk,
+            focus_areas,
+        ),
+        "description": build_description(
+            predicted_risk,
+            focus_areas,
+        ),
+        "priority": priority_mapping.get(
+            predicted_risk,
+            "Medium",
+        ),
+        "focus_areas": [
+            {
+                "feature": area["feature"],
+                "label": area["label"],
+                "value": area["value"],
+                "severity": area["severity"],
+                "shap_impact": area[
+                    "shap_impact"
+                ],
+            }
+            for area in focus_areas[:3]
+        ],
+    }
 
-    elif previous_grade < 75:
-
-        recommendations.append(
-            "Previous academic performance is moderate. "
-            "The student should focus on improving weak subjects."
-        )
-
-    else:
-
-        recommendations.append(
-            "Previous academic performance is good. "
-            "Continue using effective study strategies."
-        )
-
-
-    # ========================================================
-    # 5. DAILY STUDY HOURS
-    # ========================================================
-
-    daily_study_hours = float(
-        student_data[
-            "Study Hours"
-        ].iloc[0]
-    )
-
-    if daily_study_hours < 2:
-
-        recommendations.append(
-            "Daily study time is low. "
-            "The student should establish a regular daily study routine."
-        )
-
-    elif daily_study_hours < 4:
-
-        recommendations.append(
-            "Daily study time is moderate. "
-            "Increasing focused study sessions may improve performance."
-        )
-
-    else:
-
-        recommendations.append(
-            "The student maintains a good daily study routine. "
-            "Continue with consistent and focused study."
-        )
-
-
-    # ========================================================
-    # 6. PARENTAL SUPPORT
-    # ========================================================
-
-    parental_support_low = bool(
-        student_data[
-            "ParentalSupport_Low"
-        ].iloc[0]
-    )
-
-    parental_support_medium = bool(
-        student_data[
-            "ParentalSupport_Medium"
-        ].iloc[0]
-    )
-
-
-    if parental_support_low:
-
-        recommendations.append(
-            "Parental support appears limited. "
-            "Additional mentoring or academic guidance may be beneficial."
-        )
-
-    elif parental_support_medium:
-
-        recommendations.append(
-            "Moderate parental support is available. "
-            "Encouraging continued family involvement may help academic progress."
-        )
-
-    else:
-
-        recommendations.append(
-            "Strong parental support is indicated. "
-            "Continue encouraging positive family involvement in education."
-        )
-
-
-    # ========================================================
-    # 7. SHAP-BASED TOP FACTORS
-    # ========================================================
-
-    if shap_df is not None and not shap_df.empty:
-
-        top_features = shap_df.head(
-            3
-        )["Feature"].tolist()
-
-        recommendations.append(
-            "The main features influencing the model prediction are: "
-            + ", ".join(top_features)
-            + "."
-        )
-
-
-    # ========================================================
-    # 8. RETURN RECOMMENDATIONS
-    # ========================================================
-
-    return recommendations
-
-
-# ============================================================
-# TEST RECOMMENDATION ENGINE
-# ============================================================
 
 if __name__ == "__main__":
-
-    print(
-        "========== RECOMMENDATION ENGINE TEST =========="
-    )
-
-
-    # Sample student
-
-    sample_student = pd.DataFrame(
-        [
-            {
-                "AttendanceRate": 85.0,
-                "StudyHoursPerWeek": 15.0,
-                "PreviousGrade": 78.0,
-                "ExtracurricularActivities": 1.0,
-                "Study Hours": 4.8,
-                "Gender_Male": True,
-                "ParentalSupport_Low": False,
-                "ParentalSupport_Medium": False
-            }
-        ]
-    )
-
-
-    # Sample SHAP results
-
-    sample_shap = pd.DataFrame(
+    test_students = [
         {
-            "Feature": [
-                "Study Hours",
-                "AttendanceRate",
-                "PreviousGrade"
-            ],
-            "SHAP_Value": [
-                0.0376,
-                0.0230,
-                0.0181
-            ]
-        }
-    )
+            "name": "Low attendance student",
+            "risk_level": "High Risk",
+            "features": {
+                "attendance": 19,
+                "internal_marks": 70,
+                "assignment_score": 75,
+                "quiz_score": 68,
+                "previous_gpa": 2.8,
+                "semester": 6,
+                "gender": "Male",
+            },
+        },
+        {
+            "name": "Weak assessment student",
+            "risk_level": "Medium Risk",
+            "features": {
+                "attendance": 90,
+                "internal_marks": 45,
+                "assignment_score": 42,
+                "quiz_score": 38,
+                "previous_gpa": 3.0,
+                "semester": 5,
+                "gender": "Female",
+            },
+        },
+        {
+            "name": "Strong student",
+            "risk_level": "Low Risk",
+            "features": {
+                "attendance": 94,
+                "internal_marks": 88,
+                "assignment_score": 90,
+                "quiz_score": 86,
+                "previous_gpa": 3.7,
+                "semester": 4,
+                "gender": "Female",
+            },
+        },
+    ]
 
-
-    # Generate recommendations
-
-    recommendations = generate_recommendations(
-        predicted_risk="Low Risk",
-        student_data=sample_student,
-        shap_df=sample_shap
-    )
-
-
-    # Display recommendations
-
-    print(
-        "\n========== PERSONALIZED RECOMMENDATIONS =========="
-    )
-
-    for number, recommendation in enumerate(
-        recommendations,
-        start=1
-    ):
-
-        print(
-            f"{number}. {recommendation}"
+    for student in test_students:
+        result = (
+            generate_personalized_recommendation(
+                predicted_risk=student[
+                    "risk_level"
+                ],
+                student_data=student[
+                    "features"
+                ],
+            )
         )
 
+        print(
+            f"\n{student['name']}"
+        )
 
-    print(
-        "\n✅ Recommendation Engine test completed successfully."
-    )
+        print(
+            "Title:",
+            result["title"],
+        )
+
+        print(
+            "Priority:",
+            result["priority"],
+        )
+
+        print(
+            "Description:",
+            result["description"],
+        )
+
+        print(
+            "Focus areas:",
+            result["focus_areas"],
+        )
