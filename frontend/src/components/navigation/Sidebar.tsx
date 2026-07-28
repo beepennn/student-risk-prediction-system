@@ -11,6 +11,7 @@ import {
   FiTrendingUp,
   FiUser,
   FiUsers,
+  FiFileText,
 } from "react-icons/fi";
 
 import {
@@ -67,6 +68,11 @@ function Sidebar() {
       name: "Notifications",
       path: "/admin/notifications",
       icon: <FiBell size={20} />,
+    },
+    {
+      name: "Reports & Export",
+      path: "/admin/reports",
+      icon: <FiFileText size={20} />,
     },
   ];
 
@@ -175,7 +181,7 @@ function Sidebar() {
   const menuItems = getMenuItems();
 
   return (
-    <aside className="flex min-h-screen w-64 flex-col bg-slate-900 text-white">
+    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col overflow-y-auto bg-slate-900 text-white">
       <div className="border-b border-slate-700 px-6 py-6">
         <h1 className="text-xl font-bold">
           StudentAlert

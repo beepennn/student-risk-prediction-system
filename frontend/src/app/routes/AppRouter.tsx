@@ -19,6 +19,7 @@ import AdminAcademicRecordsPage from "../../features/admin/pages/AdminAcademicRe
 import AdminPredictionsPage from "../../features/admin/pages/AdminPredictionsPage";
 import AdminRecommendationsPage from "../../features/admin/pages/AdminRecommendationsPage";
 import AdminNotificationsPage from "../../features/admin/pages/AdminNotificationsPage";
+import AdminReportsPage from "../../features/admin/pages/AdminReportsPage";
 
 import TeacherDashboardPage from "../../features/teacher/pages/TeacherDashboardPage";
 import TeacherStudentsPage from "../../features/teacher/pages/TeacherStudentsPage";
@@ -103,6 +104,11 @@ function AppRouter() {
               element={
                 <AdminNotificationsPage />
               }
+            />
+
+            <Route
+              path="/admin/reports"
+              element={<AdminReportsPage />}
             />
           </Route>
         </Route>
