@@ -29,6 +29,7 @@ import StudentPredictionsPage from "../../features/student/pages/StudentPredicti
 import NotFoundPage from "../../pages/NotFoundPage";
 
 import AdminAcademicRecordsPage from "../../features/admin/pages/AdminAcademicRecordsPage";
+import AdminPredictionsPage from "../../features/admin/pages/AdminPredictionsPage";
 
 function AppRouter() {
   return (
@@ -71,6 +72,11 @@ function AppRouter() {
             <Route
               path="/admin/academic-records"
               element={<AdminAcademicRecordsPage />}
+            />
+
+            <Route
+              path="/admin/predictions"
+              element={<AdminPredictionsPage />}
             />
 
             {/* Teacher */}

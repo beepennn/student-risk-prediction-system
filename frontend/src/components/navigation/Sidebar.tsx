@@ -47,6 +47,11 @@ function Sidebar() {
       path: "/admin/academic-records",
       icon: <FiBookOpen size={20} />,
     },
+    {
+      name: "Predictions & SHAP",
+      path: "/admin/predictions",
+      icon: <FiTrendingUp size={20} />,
+    },
   ];
 
   const teacherMenu: SidebarItem[] = [
