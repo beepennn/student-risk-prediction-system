@@ -15,7 +15,17 @@ export interface LoginResponse {
   token_type: string;
 }
 
+
+export interface ApiMessageResponse {
+  message: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
 export interface ResetPasswordRequest {
-  password: string;
-  confirmPassword: string;
+  token: string;
+  new_password: string;
+  confirm_password: string;
 }

@@ -12,6 +12,7 @@ import {
   FiUser,
   FiUsers,
   FiFileText,
+  FiClock,
 } from "react-icons/fi";
 
 import {
@@ -73,6 +74,11 @@ function Sidebar() {
       name: "Reports & Export",
       path: "/admin/reports",
       icon: <FiFileText size={20} />,
+    },
+    {
+      name: "Audit Logs",
+      path: "/admin/audit-logs",
+      icon: <FiClock size={20} />,
     },
   ];
 

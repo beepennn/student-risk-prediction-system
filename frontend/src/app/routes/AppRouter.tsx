@@ -20,6 +20,7 @@ import AdminPredictionsPage from "../../features/admin/pages/AdminPredictionsPag
 import AdminRecommendationsPage from "../../features/admin/pages/AdminRecommendationsPage";
 import AdminNotificationsPage from "../../features/admin/pages/AdminNotificationsPage";
 import AdminReportsPage from "../../features/admin/pages/AdminReportsPage";
+import AdminAuditLogsPage from "../../features/admin/pages/AdminAuditLogsPage";
 
 import TeacherDashboardPage from "../../features/teacher/pages/TeacherDashboardPage";
 import TeacherStudentsPage from "../../features/teacher/pages/TeacherStudentsPage";
@@ -109,6 +110,11 @@ function AppRouter() {
             <Route
               path="/admin/reports"
               element={<AdminReportsPage />}
+            />
+
+            <Route
+              path="/admin/audit-logs"
+              element={<AdminAuditLogsPage />}
             />
           </Route>
         </Route>
