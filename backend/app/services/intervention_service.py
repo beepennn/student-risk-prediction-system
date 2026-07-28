@@ -158,16 +158,87 @@ def create_teacher_intervention(
     action_taken: str,
     remarks: str | None,
 ):
+    student = (
+        db.query(Student)
+        .filter(
+            Student.id == student_id
+        )
+        .first()
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student not found.",
+        )
+
+    teacher = (
+        db.query(User)
+        .filter(
+            User.id == teacher_id
+        )
+        .first()
+    )
+
+    if teacher is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Teacher not found.",
+        )
+
+    if (
+        str(teacher.role).strip().lower()
+        != "teacher"
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Only teacher accounts can "
+                "create teacher interventions."
+            ),
+        )
+
+    if not teacher.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="Teacher account is inactive.",
+        )
+
+    cleaned_action = action_taken.strip()
+
+    if len(cleaned_action) < 5:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Action taken must contain "
+                "at least 5 characters."
+            ),
+        )
+
+    cleaned_remarks = (
+        remarks.strip()
+        if remarks
+        else None
+    )
+
     intervention = Intervention(
         student_id=student_id,
         teacher_id=teacher_id,
-        action_taken=action_taken,
-        remarks=remarks,
+        action_taken=cleaned_action,
+        remarks=cleaned_remarks,
     )
 
     db.add(intervention)
     db.commit()
     db.refresh(intervention)
+
+    create_audit_log(
+        db=db,
+        user_id=teacher_id,
+        action="CREATE",
+        entity="Intervention",
+        entity_id=intervention.id,
+    )
 
     return intervention
 
