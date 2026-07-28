@@ -7,7 +7,9 @@ import {
 
 import type { User } from "../types/auth";
 
-import { getCurrentUser } from "../services/authService";
+import {
+  getCurrentUser,
+} from "../services/authService";
 
 import { AuthContext } from "./authContext";
 
@@ -17,6 +19,41 @@ interface Props {
 
 const TOKEN_STORAGE_KEY = "token";
 const USER_STORAGE_KEY = "user";
+
+function normalizeRole(
+  role: string,
+): User["role"] {
+  const normalizedRole = role
+    .trim()
+    .toLowerCase();
+
+  if (normalizedRole === "admin") {
+    return "Admin";
+  }
+
+  if (normalizedRole === "teacher") {
+    return "Teacher";
+  }
+
+  if (normalizedRole === "student") {
+    return "Student";
+  }
+
+  throw new Error(
+    `Unsupported user role: ${role}`,
+  );
+}
+
+function normalizeUser(
+  user: User,
+): User {
+  return {
+    ...user,
+    role: normalizeRole(
+      String(user.role),
+    ),
+  };
+}
 
 function getStoredUser(): User | null {
   const storedUser = localStorage.getItem(
@@ -28,36 +65,56 @@ function getStoredUser(): User | null {
   }
 
   try {
-    return JSON.parse(storedUser) as User;
+    const parsedUser = JSON.parse(
+      storedUser,
+    ) as User;
+
+    return normalizeUser(parsedUser);
   } catch (error) {
     console.error(
       "Failed to read stored user:",
       error,
     );
 
-    localStorage.removeItem(USER_STORAGE_KEY);
+    localStorage.removeItem(
+      USER_STORAGE_KEY,
+    );
 
     return null;
   }
 }
 
-export function AuthProvider({ children }: Props) {
-  const [user, setUser] = useState<User | null>(
-    getStoredUser,
-  );
+export function AuthProvider({
+  children,
+}: Props) {
+  const [user, setUser] =
+    useState<User | null>(
+      getStoredUser,
+    );
 
-  const [token, setToken] = useState<string | null>(
-    () => localStorage.getItem(TOKEN_STORAGE_KEY),
-  );
+  const [token, setToken] =
+    useState<string | null>(
+      () =>
+        localStorage.getItem(
+          TOKEN_STORAGE_KEY,
+        ),
+    );
 
-  const [isInitializing, setIsInitializing] =
-    useState(true);
+  const [
+    isInitializing,
+    setIsInitializing,
+  ] = useState(true);
 
   function login(
     authenticatedUser: User,
     accessToken: string,
   ) {
-    setUser(authenticatedUser);
+    const normalizedUser =
+      normalizeUser(
+        authenticatedUser,
+      );
+
+    setUser(normalizedUser);
     setToken(accessToken);
 
     localStorage.setItem(
@@ -67,7 +124,9 @@ export function AuthProvider({ children }: Props) {
 
     localStorage.setItem(
       USER_STORAGE_KEY,
-      JSON.stringify(authenticatedUser),
+      JSON.stringify(
+        normalizedUser,
+      ),
     );
   }
 
@@ -75,8 +134,13 @@ export function AuthProvider({ children }: Props) {
     setUser(null);
     setToken(null);
 
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    localStorage.removeItem(USER_STORAGE_KEY);
+    localStorage.removeItem(
+      TOKEN_STORAGE_KEY,
+    );
+
+    localStorage.removeItem(
+      USER_STORAGE_KEY,
+    );
   }
 
   useEffect(() => {
@@ -86,27 +150,41 @@ export function AuthProvider({ children }: Props) {
       if (!token) {
         if (isMounted) {
           setUser(null);
-          setIsInitializing(false);
+
+          setIsInitializing(
+            false,
+          );
         }
 
-        localStorage.removeItem(USER_STORAGE_KEY);
+        localStorage.removeItem(
+          USER_STORAGE_KEY,
+        );
 
         return;
       }
 
       try {
         const currentUser =
-          await getCurrentUser(token);
+          await getCurrentUser(
+            token,
+          );
+
+        const normalizedUser =
+          normalizeUser(
+            currentUser,
+          );
 
         if (!isMounted) {
           return;
         }
 
-        setUser(currentUser);
+        setUser(normalizedUser);
 
         localStorage.setItem(
           USER_STORAGE_KEY,
-          JSON.stringify(currentUser),
+          JSON.stringify(
+            normalizedUser,
+          ),
         );
       } catch (error) {
         console.error(
@@ -114,17 +192,16 @@ export function AuthProvider({ children }: Props) {
           error,
         );
 
-        /*
-         * Only remove authentication when the server confirms
-         * that the token is invalid.
-         *
-         * Do not log the user out only because the backend or
-         * internet connection is temporarily unavailable.
-         */
         if (
-          axios.isAxiosError(error) &&
-          (error.response?.status === 401 ||
-            error.response?.status === 403)
+          axios.isAxiosError(
+            error,
+          ) &&
+          (
+            error.response?.status
+              === 401
+            || error.response?.status
+              === 403
+          )
         ) {
           localStorage.removeItem(
             TOKEN_STORAGE_KEY,
@@ -141,7 +218,9 @@ export function AuthProvider({ children }: Props) {
         }
       } finally {
         if (isMounted) {
-          setIsInitializing(false);
+          setIsInitializing(
+            false,
+          );
         }
       }
     }

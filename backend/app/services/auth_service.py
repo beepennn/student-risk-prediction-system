@@ -1,7 +1,12 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.core.security import verify_password
+
+from app.core.security import (
+    verify_password,
+)
+
 from app.auth.jwt_handler import (
     create_access_token,
     create_refresh_token,
@@ -13,13 +18,23 @@ def login_user(
     email: str,
     password: str,
 ):
+    normalized_email = (
+        email.strip().lower()
+    )
+
     user = (
         db.query(User)
-        .filter(User.email == email)
+        .filter(
+            func.lower(User.email)
+            == normalized_email
+        )
         .first()
     )
 
     if user is None:
+        return None
+
+    if not user.is_active:
         return None
 
     if not verify_password(
@@ -30,12 +45,16 @@ def login_user(
 
     payload = {
         "sub": str(user.id),
-        "role": user.role,
+        "role": str(user.role),
     }
 
-    access_token = create_access_token(payload)
+    access_token = (
+        create_access_token(payload)
+    )
 
-    refresh_token = create_refresh_token(payload)
+    refresh_token = (
+        create_refresh_token(payload)
+    )
 
     return {
         "access_token": access_token,
