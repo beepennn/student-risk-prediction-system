@@ -29,14 +29,16 @@ import StudentDashboardPage from "../../features/student/pages/StudentDashboardP
 import StudentProfilePage from "../../features/student/pages/StudentProfilePage";
 import StudentAnalyticsPage from "../../features/student/pages/StudentAnalyticsPage";
 import StudentPredictionsPage from "../../features/student/pages/StudentPredictionsPage";
+import StudentRecommendationsPage from "../../features/student/pages/StudentRecommendationsPage";
+import StudentNotificationsPage from "../../features/student/pages/StudentNotificationsPage";
 
 import NotFoundPage from "../../pages/NotFoundPage";
+
 
 function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public authentication routes */}
         <Route element={<AuthLayout />}>
           <Route
             path="/"
@@ -59,7 +61,6 @@ function AppRouter() {
           />
         </Route>
 
-        {/* Admin protected routes */}
         <Route
           element={
             <ProtectedRoute
@@ -106,7 +107,6 @@ function AppRouter() {
           </Route>
         </Route>
 
-        {/* Teacher protected routes */}
         <Route
           element={
             <ProtectedRoute
@@ -141,7 +141,6 @@ function AppRouter() {
           </Route>
         </Route>
 
-        {/* Student protected routes */}
         <Route
           element={
             <ProtectedRoute
@@ -173,6 +172,20 @@ function AppRouter() {
                 <StudentPredictionsPage />
               }
             />
+
+            <Route
+              path="/student/recommendations"
+              element={
+                <StudentRecommendationsPage />
+              }
+            />
+
+            <Route
+              path="/student/notifications"
+              element={
+                <StudentNotificationsPage />
+              }
+            />
           </Route>
         </Route>
 
@@ -184,5 +197,6 @@ function AppRouter() {
     </BrowserRouter>
   );
 }
+
 
 export default AppRouter;

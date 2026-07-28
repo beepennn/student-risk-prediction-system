@@ -1,6 +1,14 @@
 import api from "../../../config/api";
 
-import type { StudentRecommendationsResponse } from "../types/studentRecommendations";
+import type {
+  StudentRecommendationsResponse,
+} from "../types/studentRecommendations";
+
+function getAuthHeaders(token: string) {
+  return {
+    Authorization: `Bearer ${token}`,
+  };
+}
 
 export async function getStudentRecommendations(
   token: string,
@@ -9,9 +17,7 @@ export async function getStudentRecommendations(
     await api.get<StudentRecommendationsResponse>(
       "/students/me/recommendations",
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(token),
       },
     );
 

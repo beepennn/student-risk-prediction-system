@@ -1,5 +1,6 @@
 import axios from "axios";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -46,8 +47,26 @@ import type {
 } from "../types/studentPredictions";
 
 import type {
+  StudentRecommendation,
   StudentRecommendationsResponse,
 } from "../types/studentRecommendations";
+
+
+interface DashboardPrediction {
+  risk_level: string;
+  prediction_date: string | null;
+  low_probability: number;
+  medium_probability: number;
+  high_probability: number;
+}
+
+
+interface DashboardRecommendation {
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+}
 
 
 function StudentDashboardPage() {
@@ -82,101 +101,118 @@ function StudentDashboardPage() {
     setOptionalDataWarning,
   ] = useState("");
 
-  async function fetchStudentData() {
-    if (!token) {
-      setError(
-        "You are not authenticated.",
-      );
 
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError("");
-      setOptionalDataWarning("");
-
-      const dashboardData =
-        await getStudentDashboardData(
-          token,
+  const fetchStudentData =
+    useCallback(async () => {
+      if (!token) {
+        setError(
+          "You are not authenticated.",
         );
 
-      setDashboard(dashboardData);
+        setLoading(false);
+        return;
+      }
 
-      const [
-        predictionsResult,
-        recommendationsResult,
-      ] = await Promise.allSettled([
-        getStudentPredictions(token),
-        getStudentRecommendations(token),
-      ]);
+      try {
+        setLoading(true);
+        setError("");
+        setOptionalDataWarning("");
 
-      if (
-        predictionsResult.status
-        === "fulfilled"
-      ) {
-        setPredictions(
-          predictionsResult.value,
-        );
-      } else {
+        /*
+         * The main dashboard request is required.
+         * Predictions and recommendations are optional.
+         */
+        const dashboardData =
+          await getStudentDashboardData(
+            token,
+          );
+
+        setDashboard(dashboardData);
+
+        const [
+          predictionsResult,
+          recommendationsResult,
+        ] = await Promise.allSettled([
+          getStudentPredictions(token),
+          getStudentRecommendations(token),
+        ]);
+
+        if (
+          predictionsResult.status
+          === "fulfilled"
+        ) {
+          setPredictions(
+            Array.isArray(
+              predictionsResult.value,
+            )
+              ? predictionsResult.value
+              : [],
+          );
+        } else {
+          console.error(
+            "Failed to load student predictions:",
+            predictionsResult.reason,
+          );
+
+          setPredictions([]);
+        }
+
+        if (
+          recommendationsResult.status
+          === "fulfilled"
+        ) {
+          setRecommendations(
+            Array.isArray(
+              recommendationsResult.value,
+            )
+              ? recommendationsResult.value
+              : [],
+          );
+        } else {
+          console.error(
+            "Failed to load student recommendations:",
+            recommendationsResult.reason,
+          );
+
+          setRecommendations([]);
+        }
+
+        if (
+          predictionsResult.status
+            === "rejected"
+          || recommendationsResult.status
+            === "rejected"
+        ) {
+          setOptionalDataWarning(
+            "Some optional dashboard information is not available yet.",
+          );
+        }
+      } catch (requestError) {
         console.error(
-          "Student predictions failed:",
-          predictionsResult.reason,
+          "Student dashboard error:",
+          requestError,
         );
 
-        setPredictions([]);
+        setError(
+          getErrorMessage(requestError),
+        );
+      } finally {
+        setLoading(false);
       }
+    }, [token]);
 
-      if (
-        recommendationsResult.status
-        === "fulfilled"
-      ) {
-        setRecommendations(
-          recommendationsResult.value,
-        );
-      } else {
-        console.error(
-          "Student recommendations failed:",
-          recommendationsResult.reason,
-        );
-
-        setRecommendations([]);
-      }
-
-      if (
-        predictionsResult.status
-          === "rejected"
-        || recommendationsResult.status
-          === "rejected"
-      ) {
-        setOptionalDataWarning(
-          "Some optional dashboard information is not available yet.",
-        );
-      }
-    } catch (requestError) {
-      console.error(
-        "Student dashboard error:",
-        requestError,
-      );
-
-      setError(
-        getErrorMessage(requestError),
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
 
   useEffect(() => {
     void fetchStudentData();
-  }, [token]);
+  }, [fetchStudentData]);
+
 
   const latestPrediction =
     useMemo<StudentPrediction | null>(
       () => {
         if (
-          predictions.length === 0
+          !Array.isArray(predictions)
+          || predictions.length === 0
         ) {
           return null;
         }
@@ -185,26 +221,132 @@ function StudentDashboardPage() {
           (
             firstPrediction,
             secondPrediction,
-          ) =>
-            new Date(
-              secondPrediction.prediction_date,
-            ).getTime()
-            - new Date(
-              firstPrediction.prediction_date,
-            ).getTime(),
+          ) => {
+            const secondDate =
+              new Date(
+                secondPrediction
+                  .prediction_date,
+              ).getTime();
+
+            const firstDate =
+              new Date(
+                firstPrediction
+                  .prediction_date,
+              ).getTime();
+
+            return secondDate - firstDate;
+          },
         )[0];
       },
       [predictions],
     );
 
+
+  const displayedPrediction =
+    useMemo<DashboardPrediction | null>(
+      () => {
+        if (latestPrediction) {
+          return {
+            risk_level:
+              latestPrediction.risk_level,
+            prediction_date:
+              latestPrediction
+                .prediction_date
+              ?? null,
+            low_probability:
+              Number(
+                latestPrediction
+                  .low_probability,
+              ) || 0,
+            medium_probability:
+              Number(
+                latestPrediction
+                  .medium_probability,
+              ) || 0,
+            high_probability:
+              Number(
+                latestPrediction
+                  .high_probability,
+              ) || 0,
+          };
+        }
+
+        const dashboardPrediction =
+          getDashboardPrediction(
+            dashboard?.latest_prediction,
+          );
+
+        return dashboardPrediction;
+      },
+      [
+        dashboard?.latest_prediction,
+        latestPrediction,
+      ],
+    );
+
+
   const latestRecommendation =
-    recommendations.length > 0
-      ? recommendations[0]
-      : null;
+    useMemo<StudentRecommendation | null>(
+      () => {
+        if (
+          !Array.isArray(
+            recommendations,
+          )
+          || recommendations.length === 0
+        ) {
+          return null;
+        }
+
+        return [...recommendations].sort(
+          (
+            firstRecommendation,
+            secondRecommendation,
+          ) =>
+            secondRecommendation.id
+            - firstRecommendation.id,
+        )[0];
+      },
+      [recommendations],
+    );
+
+
+  const displayedRecommendation =
+    useMemo<DashboardRecommendation | null>(
+      () => {
+        if (latestRecommendation) {
+          return {
+            title:
+              latestRecommendation.title
+              || "Recommendation",
+            description:
+              latestRecommendation
+                .description
+              || "No recommendation text available.",
+            priority:
+              latestRecommendation.priority
+              || "N/A",
+            status:
+              latestRecommendation.status
+              || "Pending",
+          };
+        }
+
+        return getDashboardRecommendation(
+          dashboard?.latest_recommendation,
+        );
+      },
+      [
+        dashboard
+          ?.latest_recommendation,
+        latestRecommendation,
+      ],
+    );
+
 
   if (loading) {
     return <DashboardLoadingState />;
   }
+
 
   if (error) {
     return (
@@ -217,6 +359,7 @@ function StudentDashboardPage() {
     );
   }
 
+
   if (!dashboard) {
     return (
       <DashboardErrorState
@@ -228,12 +371,29 @@ function StudentDashboardPage() {
     );
   }
 
-  const displayedPrediction =
-    latestPrediction
-    ?? dashboard.latest_prediction;
+
+  const academicSummary =
+    dashboard.academic_summary
+    ?? {
+      attendance: null,
+      internal_marks: null,
+      assignment_score: null,
+      quiz_score: null,
+      previous_gpa: null,
+    };
+
+
+  const notificationSummary =
+    dashboard.notifications
+    ?? {
+      total: 0,
+      unread: 0,
+    };
+
 
   return (
     <div className="space-y-8">
+      {/* Page heading */}
       <header>
         <h1 className="text-3xl font-bold text-gray-900">
           Student Dashboard
@@ -247,6 +407,8 @@ function StudentDashboardPage() {
         </p>
       </header>
 
+
+      {/* Optional-data warning */}
       {optionalDataWarning && (
         <div className="flex items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 px-5 py-4 text-yellow-800">
           <FiAlertCircle
@@ -260,6 +422,8 @@ function StudentDashboardPage() {
         </div>
       )}
 
+
+      {/* Student information */}
       <section className="rounded-xl bg-white p-6 shadow-md">
         <div className="mb-6 flex items-center gap-3">
           <FiUser
@@ -285,6 +449,7 @@ function StudentDashboardPage() {
             label="Roll Number"
             value={
               dashboard.student.roll_number
+              || "N/A"
             }
           />
 
@@ -292,16 +457,23 @@ function StudentDashboardPage() {
             label="Department"
             value={
               dashboard.student.department
+              || "N/A"
             }
           />
 
           <StudentInfo
             label="Semester"
-            value={`Semester ${dashboard.student.semester}`}
+            value={
+              dashboard.student.semester
+                ? `Semester ${dashboard.student.semester}`
+                : "N/A"
+            }
           />
         </div>
       </section>
 
+
+      {/* Academic summary */}
       <section>
         <SectionHeader
           title="Academic Summary"
@@ -313,8 +485,7 @@ function StudentDashboardPage() {
           <StatCard
             title="Attendance"
             value={displayValue(
-              dashboard.academic_summary
-                .attendance,
+              academicSummary.attendance,
               "%",
             )}
             icon={
@@ -325,7 +496,7 @@ function StudentDashboardPage() {
           <StatCard
             title="Internal Marks"
             value={displayValue(
-              dashboard.academic_summary
+              academicSummary
                 .internal_marks,
             )}
             icon={
@@ -336,7 +507,7 @@ function StudentDashboardPage() {
           <StatCard
             title="Assignment Score"
             value={displayValue(
-              dashboard.academic_summary
+              academicSummary
                 .assignment_score,
             )}
             icon={
@@ -347,8 +518,7 @@ function StudentDashboardPage() {
           <StatCard
             title="Quiz Score"
             value={displayValue(
-              dashboard.academic_summary
-                .quiz_score,
+              academicSummary.quiz_score,
             )}
             icon={
               <FiAward size={30} />
@@ -358,8 +528,7 @@ function StudentDashboardPage() {
           <StatCard
             title="Previous GPA"
             value={displayValue(
-              dashboard.academic_summary
-                .previous_gpa,
+              academicSummary.previous_gpa,
             )}
             icon={
               <FiTrendingUp size={30} />
@@ -368,15 +537,17 @@ function StudentDashboardPage() {
         </div>
 
         {!hasAcademicData(
-          dashboard,
+          academicSummary,
         ) && (
           <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-            No academic record has been added
-            for this student yet.
+            No academic record has been
+            added for this student yet.
           </div>
         )}
       </section>
 
+
+      {/* Prediction overview */}
       <section>
         <SectionHeader
           title="Prediction Overview"
@@ -452,29 +623,43 @@ function StudentDashboardPage() {
         )}
       </section>
 
+
+      {/* Recommendation and notifications */}
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="rounded-xl bg-white p-6 shadow-md">
-          <div className="mb-5 flex items-center gap-3">
-            <FiTrendingUp
-              size={24}
-              className="text-blue-600"
-            />
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <FiTrendingUp
+                size={24}
+                className="text-blue-600"
+              />
 
-            <h2 className="text-xl font-semibold text-gray-900">
-              Latest Recommendation
-            </h2>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Latest Recommendation
+              </h2>
+            </div>
+
+            <Link
+              to="/student/recommendations"
+              className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+            >
+              View All
+              <FiArrowRight />
+            </Link>
           </div>
 
-          {latestRecommendation ? (
-            <div className="space-y-3">
+          {displayedRecommendation ? (
+            <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-500">
                   Title
                 </p>
 
                 <p className="mt-1 font-semibold text-gray-900">
-                  {latestRecommendation.title
-                    || "Recommendation"}
+                  {
+                    displayedRecommendation
+                      .title
+                  }
                 </p>
               </div>
 
@@ -483,46 +668,41 @@ function StudentDashboardPage() {
                   Recommendation
                 </p>
 
-                <p className="mt-1 text-gray-700">
-                  {latestRecommendation
-                    .recommendation
-                    || "No recommendation text available."}
+                <p className="mt-1 leading-7 text-gray-700">
+                  {
+                    displayedRecommendation
+                      .description
+                  }
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-3 pt-2">
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
+                <span
+                  className={`rounded-full px-3 py-1 text-sm font-medium ${getPriorityClass(
+                    displayedRecommendation
+                      .priority,
+                  )}`}
+                >
                   Priority:{" "}
-                  {latestRecommendation
-                    .priority
-                    || "N/A"}
+                  {
+                    displayedRecommendation
+                      .priority
+                  }
                 </span>
 
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
-                  Category:{" "}
-                  {latestRecommendation
-                    .category
-                    || "General"}
+                <span
+                  className={`rounded-full px-3 py-1 text-sm font-medium ${getStatusClass(
+                    displayedRecommendation
+                      .status,
+                  )}`}
+                >
+                  Status:{" "}
+                  {
+                    displayedRecommendation
+                      .status
+                  }
                 </span>
               </div>
-            </div>
-          ) : dashboard
-              .latest_recommendation ? (
-            <div className="space-y-3">
-              <p className="text-gray-700">
-                {dashboard
-                  .latest_recommendation
-                  .recommendation_text
-                  || "No recommendation text available."}
-              </p>
-
-              <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
-                Priority:{" "}
-                {dashboard
-                  .latest_recommendation
-                  .priority
-                  || "N/A"}
-              </span>
             </div>
           ) : (
             <p className="text-gray-500">
@@ -532,30 +712,41 @@ function StudentDashboardPage() {
           )}
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow-md">
-          <div className="mb-5 flex items-center gap-3">
-            <FiBell
-              size={24}
-              className="text-blue-600"
-            />
 
-            <h2 className="text-xl font-semibold text-gray-900">
-              Notifications
-            </h2>
+        <div className="rounded-xl bg-white p-6 shadow-md">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <FiBell
+                size={24}
+                className="text-blue-600"
+              />
+
+              <h2 className="text-xl font-semibold text-gray-900">
+                Notifications
+              </h2>
+            </div>
+
+            <Link
+              to="/student/notifications"
+              className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+            >
+              View All
+              <FiArrowRight />
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <NotificationSummary
               label="Total Notifications"
               value={
-                dashboard.notifications.total
+                notificationSummary.total
               }
             />
 
             <NotificationSummary
               label="Unread Notifications"
               value={
-                dashboard.notifications.unread
+                notificationSummary.unread
               }
             />
           </div>
@@ -566,12 +757,107 @@ function StudentDashboardPage() {
 }
 
 
-function hasAcademicData(
-  dashboard: StudentDashboardResponse,
-): boolean {
-  const summary =
-    dashboard.academic_summary;
+function getDashboardPrediction(
+  value: unknown,
+): DashboardPrediction | null {
+  if (
+    typeof value !== "object"
+    || value === null
+  ) {
+    return null;
+  }
 
+  const prediction =
+    value as Record<string, unknown>;
+
+  const riskLevel =
+    typeof prediction.risk_level
+      === "string"
+      ? prediction.risk_level
+      : null;
+
+  if (!riskLevel) {
+    return null;
+  }
+
+  return {
+    risk_level: riskLevel,
+
+    prediction_date:
+      typeof prediction.prediction_date
+        === "string"
+        ? prediction.prediction_date
+        : null,
+
+    low_probability:
+      toNumber(
+        prediction.low_probability,
+      ),
+
+    medium_probability:
+      toNumber(
+        prediction.medium_probability,
+      ),
+
+    high_probability:
+      toNumber(
+        prediction.high_probability,
+      ),
+  };
+}
+
+
+function getDashboardRecommendation(
+  value: unknown,
+): DashboardRecommendation | null {
+  if (
+    typeof value !== "object"
+    || value === null
+  ) {
+    return null;
+  }
+
+  const recommendation =
+    value as Record<string, unknown>;
+
+  const recommendationText =
+    typeof recommendation
+      .recommendation_text
+      === "string"
+      ? recommendation
+          .recommendation_text
+      : null;
+
+  if (!recommendationText) {
+    return null;
+  }
+
+  return {
+    title: "Latest Recommendation",
+
+    description:
+      recommendationText,
+
+    priority:
+      typeof recommendation.priority
+        === "string"
+        ? recommendation.priority
+        : "N/A",
+
+    status: "Pending",
+  };
+}
+
+
+function hasAcademicData(
+  summary: {
+    attendance?: number | null;
+    internal_marks?: number | null;
+    assignment_score?: number | null;
+    quiz_score?: number | null;
+    previous_gpa?: number | null;
+  },
+): boolean {
   return [
     summary.attendance,
     summary.internal_marks,
@@ -583,6 +869,20 @@ function hasAcademicData(
       value !== null
       && value !== undefined,
   );
+}
+
+
+function toNumber(
+  value: unknown,
+): number {
+  const numericValue =
+    Number(value);
+
+  return Number.isFinite(
+    numericValue,
+  )
+    ? numericValue
+    : 0;
 }
 
 
@@ -602,18 +902,11 @@ function displayValue(
 
 
 function formatProbability(
-  value: number | null | undefined,
+  value: number,
 ): string {
-  if (
-    value === null
-    || value === undefined
-  ) {
-    return "0.00%";
-  }
-
-  return `${(Number(value) * 100).toFixed(
-    2,
-  )}%`;
+  return `${(
+    Number(value) * 100
+  ).toFixed(2)}%`;
 }
 
 
@@ -675,6 +968,54 @@ function getRiskClass(
 }
 
 
+function getPriorityClass(
+  priority: string,
+): string {
+  const normalisedPriority =
+    priority.toLowerCase();
+
+  if (
+    normalisedPriority.includes("high")
+  ) {
+    return "bg-red-100 text-red-700";
+  }
+
+  if (
+    normalisedPriority.includes("medium")
+  ) {
+    return (
+      "bg-yellow-100 text-yellow-700"
+    );
+  }
+
+  if (
+    normalisedPriority.includes("low")
+  ) {
+    return (
+      "bg-green-100 text-green-700"
+    );
+  }
+
+  return "bg-gray-100 text-gray-700";
+}
+
+
+function getStatusClass(
+  status: string,
+): string {
+  if (
+    status.toLowerCase()
+    === "completed"
+  ) {
+    return "bg-green-100 text-green-700";
+  }
+
+  return (
+    "bg-yellow-100 text-yellow-700"
+  );
+}
+
+
 function getErrorMessage(
   error: unknown,
 ): string {
@@ -682,12 +1023,15 @@ function getErrorMessage(
     const detail =
       error.response?.data?.detail;
 
-    if (typeof detail === "string") {
+    if (
+      typeof detail === "string"
+    ) {
       return detail;
     }
 
     if (
-      error.response?.status === 404
+      error.response?.status
+      === 404
     ) {
       return (
         "Your student profile was not found. "
@@ -696,7 +1040,8 @@ function getErrorMessage(
     }
 
     if (
-      error.response?.status === 401
+      error.response?.status
+      === 401
     ) {
       return (
         "Your session has expired. "
@@ -705,7 +1050,8 @@ function getErrorMessage(
     }
 
     if (
-      error.response?.status === 403
+      error.response?.status
+      === 403
     ) {
       return (
         "You do not have permission "

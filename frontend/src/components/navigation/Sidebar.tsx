@@ -21,11 +21,13 @@ import {
 
 import { useAuth } from "../../features/auth/context/useAuth";
 
+
 interface SidebarItem {
   name: string;
   path: string;
   icon: ReactNode;
 }
+
 
 function Sidebar() {
   const { user, logout } = useAuth();
@@ -107,10 +109,23 @@ function Sidebar() {
       path: "/student/predictions",
       icon: <FiTrendingUp size={20} />,
     },
+    {
+      name: "Recommendations",
+      path: "/student/recommendations",
+      icon: <FiTarget size={20} />,
+    },
+    {
+      name: "Notifications",
+      path: "/student/notifications",
+      icon: <FiBell size={20} />,
+    },
   ];
 
   function getMenuItems(): SidebarItem[] {
-    const role = user?.role.toLowerCase();
+    const role =
+      user?.role
+        .trim()
+        .toLowerCase();
 
     if (role === "admin") {
       return adminMenu;
@@ -131,25 +146,30 @@ function Sidebar() {
     path: string,
   ): boolean {
     if (
-      path === "/admin" ||
-      path === "/teacher" ||
-      path === "/student"
+      path === "/admin"
+      || path === "/teacher"
+      || path === "/student"
     ) {
       return pathname === path;
     }
 
     return (
-      pathname === path ||
-      pathname.startsWith(`${path}/`)
+      pathname === path
+      || pathname.startsWith(
+        `${path}/`,
+      )
     );
   }
 
   function handleLogout() {
     logout();
 
-    navigate("/login", {
-      replace: true,
-    });
+    navigate(
+      "/login",
+      {
+        replace: true,
+      },
+    );
   }
 
   const menuItems = getMenuItems();
@@ -174,12 +194,12 @@ function Sidebar() {
 
           <div className="min-w-0">
             <p className="truncate font-semibold">
-              {user?.full_name ||
-                user?.email ||
-                "User"}
+              {user?.full_name
+                || user?.email
+                || "User"}
             </p>
 
-            <p className="truncate text-sm capitalize text-slate-400">
+            <p className="truncate text-sm text-slate-400">
               {user?.role || "Account"}
             </p>
           </div>
@@ -189,7 +209,9 @@ function Sidebar() {
       <nav className="flex-1 space-y-2 px-4 py-6">
         {menuItems.map((item) => {
           const active =
-            isMenuItemActive(item.path);
+            isMenuItemActive(
+              item.path,
+            );
 
           return (
             <NavLink
@@ -222,5 +244,6 @@ function Sidebar() {
     </aside>
   );
 }
+
 
 export default Sidebar;
