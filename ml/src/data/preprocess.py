@@ -79,7 +79,7 @@ ML_FEATURES = [
 
 
 def preprocess_dataset() -> pd.DataFrame:
-    print("Loading dataset from:")
+    print("Loading dataset:")
     print(INPUT_PATH)
 
     if not INPUT_PATH.exists():
@@ -87,7 +87,9 @@ def preprocess_dataset() -> pd.DataFrame:
             f"Dataset not found: {INPUT_PATH}"
         )
 
-    dataframe = pd.read_csv(INPUT_PATH)
+    dataframe = pd.read_csv(
+        INPUT_PATH
+    )
 
     original_rows = len(dataframe)
 
@@ -108,8 +110,9 @@ def preprocess_dataset() -> pd.DataFrame:
         )
 
     dataframe["semester"] = (
-        dataframe["semester"]
-        .replace(SEMESTER_MAPPING)
+        dataframe["semester"].replace(
+            SEMESTER_MAPPING
+        )
     )
 
     for column in NUMERIC_FEATURES:
@@ -130,11 +133,17 @@ def preprocess_dataset() -> pd.DataFrame:
     )
 
     dataframe["attendance"] = (
-        dataframe["attendance"].clip(0, 100)
+        dataframe["attendance"].clip(
+            0,
+            100,
+        )
     )
 
     dataframe["internal_marks"] = (
-        dataframe["internal_marks"].clip(0, 100)
+        dataframe["internal_marks"].clip(
+            0,
+            100,
+        )
     )
 
     dataframe["assignment_score"] = (
@@ -145,15 +154,24 @@ def preprocess_dataset() -> pd.DataFrame:
     )
 
     dataframe["quiz_score"] = (
-        dataframe["quiz_score"].clip(0, 100)
+        dataframe["quiz_score"].clip(
+            0,
+            100,
+        )
     )
 
     dataframe["previous_gpa"] = (
-        dataframe["previous_gpa"].clip(0, 4)
+        dataframe["previous_gpa"].clip(
+            0,
+            4,
+        )
     )
 
     dataframe = dataframe[
-        dataframe["semester"].between(1, 8)
+        dataframe["semester"].between(
+            1,
+            8,
+        )
     ].copy()
 
     dataframe["semester"] = (
@@ -187,21 +205,24 @@ def preprocess_dataset() -> pd.DataFrame:
         index=False,
     )
 
-    final_rows = len(processed_dataframe)
+    final_rows = len(
+        processed_dataframe
+    )
 
     risk_distribution = (
-        processed_dataframe["AcademicRisk"]
-        .value_counts()
+        processed_dataframe[
+            "AcademicRisk"
+        ].value_counts()
     )
 
     report_content = f"""
 # Preprocessing Report
 
-## Input
+## Input Dataset
 
 `{INPUT_PATH}`
 
-## Output
+## Output Dataset
 
 `{OUTPUT_PATH}`
 
@@ -211,20 +232,7 @@ def preprocess_dataset() -> pd.DataFrame:
 - Final rows: {final_rows}
 - Removed rows: {original_rows - final_rows}
 
-## Features
-
-- attendance
-- internal_marks
-- assignment_score
-- quiz_score
-- previous_gpa
-- semester
-- gender
-
-## Target Method
-
-The target is generated from an interpretable weighted
-academic performance score:
+## Performance Score Weights
 
 - Attendance: 25%
 - Internal marks: 20%
@@ -232,11 +240,11 @@ academic performance score:
 - Quiz score: 15%
 - Previous GPA: 25%
 
-Risk categories:
+## Risk Classification
 
-- Performance score below 50: High Risk
-- Performance score from 50 to below 70: Medium Risk
-- Performance score 70 or above: Low Risk
+- Score below 50: High Risk
+- Score from 50 to below 70: Medium Risk
+- Score 70 or above: Low Risk
 
 ## Risk Distribution
 

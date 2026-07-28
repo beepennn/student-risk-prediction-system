@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 import joblib
 import numpy as np
@@ -36,15 +39,49 @@ REQUIRED_FEATURES = [
 ]
 
 
+EXPECTED_CLASSES = {
+    "High Risk",
+    "Medium Risk",
+    "Low Risk",
+}
+
+
 @lru_cache(maxsize=1)
 def load_model():
     if not MODEL_PATH.exists():
         raise FileNotFoundError(
-            "Trained model not found: "
-            f"{MODEL_PATH}. Train the model first."
+            "Best trained model was not found: "
+            f"{MODEL_PATH}\n"
+            "Run training first."
         )
 
-    return joblib.load(MODEL_PATH)
+    model = joblib.load(
+        MODEL_PATH
+    )
+
+    actual_classes = {
+        str(class_name)
+        for class_name in model.classes_
+    }
+
+    missing_classes = (
+        EXPECTED_CLASSES
+        - actual_classes
+    )
+
+    if missing_classes:
+        raise ValueError(
+            "The trained model is missing risk "
+            f"classes: {sorted(missing_classes)}. "
+            "Retrain the model using the balanced "
+            "training pipeline."
+        )
+
+    return model
+
+
+def clear_model_cache() -> None:
+    load_model.cache_clear()
 
 
 def get_preprocessor(model):
@@ -60,7 +97,7 @@ def get_classifier(model):
 
 
 def prepare_student_data(
-    student_features: dict,
+    student_features: dict[str, Any],
 ) -> pd.DataFrame:
     missing_features = [
         feature
@@ -79,7 +116,9 @@ def prepare_student_data(
             student_features["attendance"]
         ),
         "internal_marks": float(
-            student_features["internal_marks"]
+            student_features[
+                "internal_marks"
+            ]
         ),
         "assignment_score": float(
             student_features[
@@ -97,25 +136,43 @@ def prepare_student_data(
         ),
         "gender": str(
             student_features["gender"]
-        ).strip().title(),
+        )
+        .strip()
+        .title(),
     }
 
-    return pd.DataFrame([prepared_data])
+    numeric_limits = {
+        "attendance": (0, 100),
+        "internal_marks": (0, 100),
+        "assignment_score": (0, 100),
+        "quiz_score": (0, 100),
+        "previous_gpa": (0, 4),
+        "semester": (1, 8),
+    }
 
+    for (
+        feature,
+        limits,
+    ) in numeric_limits.items():
+        value = float(
+            prepared_data[feature]
+        )
 
-def predict_student(
-    student_features: dict,
-) -> str:
-    result = predict_student_result(
-        student_features,
-        include_shap=False,
+        minimum, maximum = limits
+
+        if not minimum <= value <= maximum:
+            raise ValueError(
+                f"{feature} must be between "
+                f"{minimum} and {maximum}."
+            )
+
+    return pd.DataFrame(
+        [prepared_data]
     )
-
-    return result["risk_level"]
 
 
 def predict_proba(
-    student_features: dict,
+    student_features: dict[str, Any],
 ) -> dict[str, float]:
     model = load_model()
 
@@ -123,22 +180,48 @@ def predict_proba(
         student_features
     )
 
-    probabilities = model.predict_proba(
-        student_data
-    )[0]
+    raw_probabilities = (
+        model.predict_proba(
+            student_data
+        )[0]
+    )
 
-    return {
-        str(class_name): float(probability)
-        for class_name, probability in zip(
+    probabilities = {
+        str(class_name): float(
+            probability
+        )
+        for class_name, probability
+        in zip(
             model.classes_,
-            probabilities,
+            raw_probabilities,
         )
     }
 
+    for expected_class in EXPECTED_CLASSES:
+        probabilities.setdefault(
+            expected_class,
+            0.0,
+        )
+
+    return probabilities
+
+
+def predict_student(
+    student_features: dict[str, Any],
+) -> str:
+    result = predict_student_result(
+        student_features,
+        include_shap=False,
+    )
+
+    return str(
+        result["risk_level"]
+    )
+
 
 def generate_shap_values(
-    student_features: dict,
-) -> dict:
+    student_features: dict[str, Any],
+) -> dict[str, dict[str, float]]:
     if shap is None:
         return {}
 
@@ -148,11 +231,18 @@ def generate_shap_values(
         student_features
     )
 
-    preprocessor = get_preprocessor(model)
-    classifier = get_classifier(model)
+    preprocessor = get_preprocessor(
+        model
+    )
 
-    transformed_data = preprocessor.transform(
-        student_data
+    classifier = get_classifier(
+        model
+    )
+
+    transformed_data = (
+        preprocessor.transform(
+            student_data
+        )
     )
 
     if hasattr(
@@ -164,12 +254,15 @@ def generate_shap_values(
         )
 
     transformed_data = np.asarray(
-        transformed_data
+        transformed_data,
+        dtype=float,
     )
 
-    predicted_class = classifier.predict(
-        transformed_data
-    )[0]
+    predicted_class = (
+        classifier.predict(
+            transformed_data
+        )[0]
+    )
 
     class_index = list(
         classifier.classes_
@@ -190,7 +283,9 @@ def generate_shap_values(
         list,
     ):
         class_shap_values = np.asarray(
-            raw_shap_values[class_index]
+            raw_shap_values[
+                class_index
+            ]
         )[0]
 
     else:
@@ -214,7 +309,7 @@ def generate_shap_values(
 
         else:
             raise ValueError(
-                "Unsupported SHAP output shape: "
+                "Unsupported SHAP result shape: "
                 f"{shap_array.shape}"
             )
 
@@ -242,37 +337,21 @@ def generate_shap_values(
 
 
 def predict_student_result(
-    student_features: dict,
+    student_features: dict[str, Any],
     include_shap: bool = True,
-) -> dict:
-    model = load_model()
-
-    student_data = prepare_student_data(
+) -> dict[str, Any]:
+    probabilities = predict_proba(
         student_features
     )
 
-    raw_probabilities = model.predict_proba(
-        student_data
-    )[0]
-
-    probabilities = {
-        str(class_name): float(probability)
-        for class_name, probability in zip(
-            model.classes_,
-            raw_probabilities,
-        )
-    }
-
-    # Always select the class with the largest
-    # returned probability.
     risk_level = max(
         probabilities,
         key=probabilities.get,
     )
 
-    confidence = probabilities[
-        risk_level
-    ]
+    confidence = float(
+        probabilities[risk_level]
+    )
 
     shap_values = (
         generate_shap_values(
@@ -285,8 +364,8 @@ def predict_student_result(
     return {
         "risk_level": risk_level,
         "probabilities": probabilities,
-        "confidence": float(confidence),
-        "confidence_percentage": float(
+        "confidence": confidence,
+        "confidence_percentage": (
             confidence * 100
         ),
         "shap_values": shap_values,
@@ -297,48 +376,86 @@ if __name__ == "__main__":
     test_students = [
         {
             "name": "High-risk test",
-            "attendance": 19,
-            "internal_marks": 10,
-            "assignment_score": 1,
-            "quiz_score": 1,
-            "previous_gpa": 1.0,
-            "semester": 6,
-            "gender": "Male",
+            "expected": "High Risk",
+            "features": {
+                "attendance": 19,
+                "internal_marks": 10,
+                "assignment_score": 1,
+                "quiz_score": 1,
+                "previous_gpa": 1.0,
+                "semester": 6,
+                "gender": "Male",
+            },
         },
         {
             "name": "Medium-risk test",
-            "attendance": 62,
-            "internal_marks": 55,
-            "assignment_score": 60,
-            "quiz_score": 58,
-            "previous_gpa": 2.4,
-            "semester": 5,
-            "gender": "Female",
+            "expected": "Medium Risk",
+            "features": {
+                "attendance": 62,
+                "internal_marks": 55,
+                "assignment_score": 60,
+                "quiz_score": 58,
+                "previous_gpa": 2.4,
+                "semester": 5,
+                "gender": "Female",
+            },
         },
         {
             "name": "Low-risk test",
-            "attendance": 90,
-            "internal_marks": 85,
-            "assignment_score": 88,
-            "quiz_score": 82,
-            "previous_gpa": 3.6,
-            "semester": 4,
-            "gender": "Female",
+            "expected": "Low Risk",
+            "features": {
+                "attendance": 90,
+                "internal_marks": 85,
+                "assignment_score": 88,
+                "quiz_score": 82,
+                "previous_gpa": 3.6,
+                "semester": 4,
+                "gender": "Female",
+            },
         },
     ]
 
-    for test_student in test_students:
-        student_name = test_student.pop(
-            "name"
-        )
+    failures = []
 
+    for test_student in test_students:
         result = predict_student_result(
-            test_student,
+            test_student["features"],
             include_shap=False,
         )
 
         print(
-            f"\n{student_name}:"
+            f"\n{test_student['name']}:"
         )
 
-        print(result)
+        print(
+            "Expected:",
+            test_student["expected"],
+        )
+
+        print(
+            "Predicted:",
+            result["risk_level"],
+        )
+
+        print(
+            "Probabilities:",
+            result["probabilities"],
+        )
+
+        if (
+            result["risk_level"]
+            != test_student["expected"]
+        ):
+            failures.append(
+                test_student["name"]
+            )
+
+    if failures:
+        raise RuntimeError(
+            "Prediction tests failed: "
+            f"{failures}"
+        )
+
+    print(
+        "\nAll prediction tests passed."
+    )

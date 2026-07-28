@@ -1,10 +1,10 @@
 # Preprocessing Report
 
-## Input
+## Input Dataset
 
 `C:\Users\Asus\student-risk-prediction-system\ml\data\raw\student_performance_new_with_gpa_semester.csv`
 
-## Output
+## Output Dataset
 
 `C:\Users\Asus\student-risk-prediction-system\ml\data\processed\student_performance_processed.csv`
 
@@ -14,20 +14,7 @@
 - Final rows: 5000
 - Removed rows: 0
 
-## Features
-
-- attendance
-- internal_marks
-- assignment_score
-- quiz_score
-- previous_gpa
-- semester
-- gender
-
-## Target Method
-
-The target is generated from an interpretable weighted
-academic performance score:
+## Performance Score Weights
 
 - Attendance: 25%
 - Internal marks: 20%
@@ -35,11 +22,11 @@ academic performance score:
 - Quiz score: 15%
 - Previous GPA: 25%
 
-Risk categories:
+## Risk Classification
 
-- Performance score below 50: High Risk
-- Performance score from 50 to below 70: Medium Risk
-- Performance score 70 or above: Low Risk
+- Score below 50: High Risk
+- Score from 50 to below 70: Medium Risk
+- Score 70 or above: Low Risk
 
 ## Risk Distribution
 
