@@ -21,6 +21,7 @@ import AdminRecommendationsPage from "../../features/admin/pages/AdminRecommenda
 import AdminNotificationsPage from "../../features/admin/pages/AdminNotificationsPage";
 import AdminReportsPage from "../../features/admin/pages/AdminReportsPage";
 import AdminAuditLogsPage from "../../features/admin/pages/AdminAuditLogsPage";
+import AdminTeachersPage from "../../features/admin/pages/AdminTeachersPage";
 
 import TeacherDashboardPage from "../../features/teacher/pages/TeacherDashboardPage";
 import TeacherStudentsPage from "../../features/teacher/pages/TeacherStudentsPage";
@@ -79,6 +80,11 @@ function AppRouter() {
             <Route
               path="/admin/students"
               element={<AdminStudentsPage />}
+            />
+
+            <Route
+              path="/admin/teachers"
+              element={<AdminTeachersPage />}
             />
 
             <Route
