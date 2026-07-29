@@ -519,11 +519,11 @@ function AdminPredictionsPage() {
             className={getInputClass(false)}
           >
             <option value="">All risk levels</option>
-            <option value="Low">Low Risk</option>
-            <option value="Medium">
+            <option value="Low Risk">Low Risk</option>
+            <option value="Medium Risk">
               Medium Risk
             </option>
-            <option value="High">
+            <option value="High Risk">
               High Risk
             </option>
           </select>
@@ -914,11 +914,26 @@ function PredictionDetailsModal({
   onClose,
 }: PredictionDetailsModalProps) {
   const maximumImpact = Math.max(
-    ...explanations.map((explanation) =>
-      Math.abs(explanation.shap_value),
+    ...explanations.map(
+      (explanation) =>
+        Math.abs(
+          explanation.shap_value,
+        ),
     ),
     0.0001,
   );
+
+  const positiveStyle =
+    getShapPresentation(
+      1,
+      prediction.risk_level,
+    );
+
+  const negativeStyle =
+    getShapPresentation(
+      -1,
+      prediction.risk_level,
+    );
 
   return (
     <ModalContainer maxWidth="max-w-4xl">
@@ -928,7 +943,7 @@ function PredictionDetailsModal({
         onClose={onClose}
       />
 
-      <div className="space-y-6 p-6">
+      <div className="space-y-6 p-4 sm:p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <DetailCard
             label="Risk Level"
@@ -937,7 +952,9 @@ function PredictionDetailsModal({
 
           <DetailCard
             label="Confidence"
-            value={formatConfidence(prediction)}
+            value={formatConfidence(
+              prediction,
+            )}
           />
 
           <DetailCard
@@ -977,15 +994,51 @@ function PredictionDetailsModal({
         </div>
 
         <section>
-          <div className="mb-4">
+          <div className="mb-5">
             <h3 className="text-lg font-semibold text-gray-900">
-              SHAP Feature Importance
+              SHAP Explanation for{" "}
+              {prediction.risk_level}
             </h3>
 
-            <p className="mt-1 text-sm text-gray-500">
-              Positive values increase predicted risk.
-              Negative values reduce predicted risk.
+            <p className="mt-1 text-sm leading-6 text-gray-500">
+              {getShapDescription(
+                prediction.risk_level,
+              )}
             </p>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                <span
+                  className={`h-3 w-3 shrink-0 rounded-full ${positiveStyle.barClass}`}
+                />
+
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    Positive contribution
+                  </p>
+
+                  <p className="text-xs text-gray-500">
+                    Supports the predicted class
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                <span
+                  className={`h-3 w-3 shrink-0 rounded-full ${negativeStyle.barClass}`}
+                />
+
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    Negative contribution
+                  </p>
+
+                  <p className="text-xs text-gray-500">
+                    Opposes the predicted class
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {loading ? (
@@ -996,58 +1049,73 @@ function PredictionDetailsModal({
             </div>
           ) : explanations.length === 0 ? (
             <div className="rounded-lg bg-gray-50 p-6 text-center text-gray-500">
-              No SHAP explanation is available for
-              this prediction.
+              No SHAP explanation is
+              available for this prediction.
             </div>
           ) : (
             <div className="space-y-4">
               {explanations.map(
                 (explanation, index) => {
                   const percentage =
-                    (Math.abs(
-                      explanation.shap_value,
-                    ) /
-                      maximumImpact) *
-                    100;
+                    (
+                      Math.abs(
+                        explanation.shap_value,
+                      )
+                      / maximumImpact
+                    )
+                    * 100;
 
-                  const positive =
-                    explanation.shap_value >= 0;
+                  const visualStyle =
+                    getShapPresentation(
+                      explanation.shap_value,
+                      prediction.risk_level,
+                    );
 
                   return (
                     <div
                       key={
-                        explanation.id ??
-                        `${explanation.feature_name}-${index}`
+                        explanation.id
+                        ?? `${explanation.feature_name}-${index}`
                       }
-                      className="rounded-lg border border-gray-200 p-4"
+                      className="rounded-xl border border-gray-200 p-4"
                     >
-                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <p className="font-medium capitalize text-gray-900">
+                      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900">
                             {formatFeatureName(
                               explanation.feature_name,
                             )}
                           </p>
 
-                          {explanation.feature_value !==
-                            null && (
-                            <p className="text-xs text-gray-500">
-                              Input value:{" "}
-                              {String(
-                                explanation.feature_value,
-                              )}
-                            </p>
-                          )}
+                          {explanation.feature_value
+                            !== null
+                            && explanation.feature_value
+                              !== undefined && (
+                              <p className="mt-1 text-xs text-gray-500">
+                                Input value:{" "}
+                                {String(
+                                  explanation
+                                    .feature_value,
+                                )}
+                              </p>
+                            )}
+
+                          <p className="mt-2 text-xs font-medium text-gray-600">
+                            {
+                              visualStyle
+                                .directionLabel
+                            }
+                          </p>
                         </div>
 
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            positive
-                              ? "bg-red-100 text-red-700"
-                              : "bg-green-100 text-green-700"
-                          }`}
+                          className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${visualStyle.badgeClass}`}
                         >
-                          {positive ? "+" : ""}
+                          {explanation.shap_value
+                            >= 0
+                            ? "+"
+                            : ""}
+
                           {explanation.shap_value.toFixed(
                             4,
                           )}
@@ -1056,11 +1124,7 @@ function PredictionDetailsModal({
 
                       <div className="h-3 overflow-hidden rounded-full bg-gray-100">
                         <div
-                          className={`h-full rounded-full ${
-                            positive
-                              ? "bg-red-500"
-                              : "bg-green-500"
-                          }`}
+                          className={`h-full rounded-full transition-all ${visualStyle.barClass}`}
                           style={{
                             width: `${Math.max(
                               percentage,
@@ -1068,6 +1132,16 @@ function PredictionDetailsModal({
                             )}%`,
                           }}
                         />
+                      </div>
+
+                      <div className="mt-2 flex justify-between text-xs text-gray-400">
+                        <span>
+                          Lower influence
+                        </span>
+
+                        <span>
+                          Higher influence
+                        </span>
                       </div>
                     </div>
                   );
@@ -1081,7 +1155,7 @@ function PredictionDetailsModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-gray-900 px-5 py-2.5 font-medium text-white hover:bg-gray-800"
+            className="w-full rounded-lg bg-gray-900 px-5 py-2.5 font-medium text-white hover:bg-gray-800 sm:w-auto"
           >
             Close
           </button>
@@ -1438,10 +1512,145 @@ function formatDate(
   });
 }
 
+interface ShapPresentation {
+  badgeClass: string;
+  barClass: string;
+  directionLabel: string;
+}
+
+
+function getShapPresentation(
+  shapValue: number,
+  riskLevel: string,
+): ShapPresentation {
+  const positive =
+    shapValue >= 0;
+
+  const normalizedRisk =
+    riskLevel
+      .trim()
+      .toLowerCase();
+
+  if (
+    normalizedRisk.includes("high")
+  ) {
+    if (positive) {
+      return {
+        badgeClass:
+          "bg-red-100 text-red-700",
+        barClass: "bg-red-500",
+        directionLabel:
+          "Supports the High Risk prediction",
+      };
+    }
+
+    return {
+      badgeClass:
+        "bg-green-100 text-green-700",
+      barClass: "bg-green-500",
+      directionLabel:
+        "Opposes the High Risk prediction",
+    };
+  }
+
+  if (
+    normalizedRisk.includes("low")
+  ) {
+    if (positive) {
+      return {
+        badgeClass:
+          "bg-green-100 text-green-700",
+        barClass: "bg-green-500",
+        directionLabel:
+          "Supports the Low Risk prediction",
+      };
+    }
+
+    return {
+      badgeClass:
+        "bg-red-100 text-red-700",
+      barClass: "bg-red-500",
+      directionLabel:
+        "Opposes the Low Risk prediction",
+    };
+  }
+
+  if (
+    normalizedRisk.includes("medium")
+  ) {
+    if (positive) {
+      return {
+        badgeClass:
+          "bg-amber-100 text-amber-700",
+        barClass: "bg-amber-500",
+        directionLabel:
+          "Supports the Medium Risk prediction",
+      };
+    }
+
+    return {
+      badgeClass:
+        "bg-blue-100 text-blue-700",
+      barClass: "bg-blue-500",
+      directionLabel:
+        "Opposes the Medium Risk prediction",
+    };
+  }
+
+  if (positive) {
+    return {
+      badgeClass:
+        "bg-blue-100 text-blue-700",
+      barClass: "bg-blue-500",
+      directionLabel:
+        "Supports the predicted class",
+    };
+  }
+
+  return {
+    badgeClass:
+      "bg-slate-100 text-slate-700",
+    barClass: "bg-slate-500",
+    directionLabel:
+      "Opposes the predicted class",
+  };
+}
+
+
+function getShapDescription(
+  riskLevel: string,
+): string {
+  return (
+    `Positive values support the ${riskLevel} `
+    + "prediction. Negative values push the "
+    + "model away from this class. Longer bars "
+    + "represent stronger influence."
+  );
+}
+
 function formatFeatureName(
   featureName: string,
 ): string {
-  return featureName.replaceAll("_", " ");
+  const cleanedName = featureName
+    .replace(
+      /^numeric__?/i,
+      "",
+    )
+    .replace(
+      /^categorical__?/i,
+      "",
+    )
+    .replaceAll(
+      "_",
+      " ",
+    )
+    .trim();
+
+  return cleanedName.replace(
+    /\b\w/g,
+    (letter) =>
+      letter.toUpperCase(),
+  );
 }
 
 function getErrorMessage(error: unknown): string {

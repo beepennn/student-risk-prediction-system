@@ -108,15 +108,41 @@ EXPECTED_CLASSES = [
     "Low Risk",
 ]
 
+GENDERS = [
+    "Male",
+    "Female",
+    "Other",
+]
+
+RANDOM_STATE = 42
+
 
 # ============================================================
-# 3. CREATE ONE-HOT ENCODER
+# 3. NORMALISATION HELPERS
 # ============================================================
+
+def normalize_gender(
+    value: object,
+) -> str:
+    if pd.isna(value):
+        return "Other"
+
+    normalized = (
+        str(value)
+        .strip()
+        .title()
+    )
+
+    if normalized in GENDERS:
+        return normalized
+
+    return "Other"
+
 
 def create_one_hot_encoder() -> OneHotEncoder:
     """
-    Create a dense OneHotEncoder compatible with both newer
-    and older scikit-learn versions.
+    Create a dense OneHotEncoder compatible with
+    newer and older scikit-learn versions.
     """
 
     try:
@@ -132,7 +158,7 @@ def create_one_hot_encoder() -> OneHotEncoder:
 
 
 # ============================================================
-# 4. EVALUATE MODEL
+# 4. EVALUATE GENERAL MODEL PERFORMANCE
 # ============================================================
 
 def evaluate_model(
@@ -160,6 +186,7 @@ def evaluate_model(
     macro_precision = precision_score(
         test_target,
         predictions,
+        labels=EXPECTED_CLASSES,
         average="macro",
         zero_division=0,
     )
@@ -167,6 +194,7 @@ def evaluate_model(
     macro_recall = recall_score(
         test_target,
         predictions,
+        labels=EXPECTED_CLASSES,
         average="macro",
         zero_division=0,
     )
@@ -174,6 +202,7 @@ def evaluate_model(
     macro_f1 = f1_score(
         test_target,
         predictions,
+        labels=EXPECTED_CLASSES,
         average="macro",
         zero_division=0,
     )
@@ -227,27 +256,75 @@ def evaluate_model(
     return {
         "Model": model_name,
         "Accuracy": accuracy,
-        "Balanced Accuracy": balanced_accuracy,
-        "Macro Precision": macro_precision,
-        "Macro Recall": macro_recall,
+        "Balanced Accuracy": (
+            balanced_accuracy
+        ),
+        "Macro Precision": (
+            macro_precision
+        ),
+        "Macro Recall": (
+            macro_recall
+        ),
         "Macro F1": macro_f1,
     }
 
 
 # ============================================================
-# 5. GENERATE BALANCED SYNTHETIC DATA
+# 5. CREATE GENDER QUOTAS
+# ============================================================
+
+def create_gender_quotas(
+    rows_per_class: int,
+) -> dict[str, int]:
+    """
+    Divide every risk class approximately equally
+    among Male, Female and Other.
+    """
+
+    base_count = (
+        rows_per_class
+        // len(GENDERS)
+    )
+
+    remainder = (
+        rows_per_class
+        % len(GENDERS)
+    )
+
+    quotas: dict[str, int] = {}
+
+    for index, gender in enumerate(
+        GENDERS
+    ):
+        quotas[gender] = (
+            base_count
+            + (
+                1
+                if index < remainder
+                else 0
+            )
+        )
+
+    return quotas
+
+
+# ============================================================
+# 6. GENERATE RISK- AND GENDER-BALANCED DATA
 # ============================================================
 
 def generate_balanced_synthetic_data(
     rows_per_class: int = 1000,
-    random_state: int = 42,
+    random_state: int = RANDOM_STATE,
 ) -> pd.DataFrame:
     """
-    Generate balanced academic profiles for High, Medium,
-    and Low Risk.
+    Generate balanced academic profiles for High,
+    Medium and Low Risk.
 
-    Labels are created using the same academic-risk rules
-    used during preprocessing.
+    Each risk class also contains approximately equal
+    numbers of Male, Female and Other students.
+
+    The target is based only on academic indicators.
+    Gender is not used when creating the target label.
     """
 
     if rows_per_class <= 0:
@@ -259,31 +336,57 @@ def generate_balanced_synthetic_data(
         random_state
     )
 
+    gender_quotas = (
+        create_gender_quotas(
+            rows_per_class
+        )
+    )
+
     profiles: dict[
         str,
-        list[dict[str, object]],
+        dict[
+            str,
+            list[dict[str, object]],
+        ],
     ] = {
-        "High Risk": [],
-        "Medium Risk": [],
-        "Low Risk": [],
+        risk_level: {
+            gender: []
+            for gender in GENDERS
+        }
+        for risk_level in EXPECTED_CLASSES
     }
 
     maximum_attempts = (
-        rows_per_class * 200
+        rows_per_class * 500
     )
 
     attempts = 0
 
+    def generation_complete() -> bool:
+        for risk_level in EXPECTED_CLASSES:
+            for gender in GENDERS:
+                if (
+                    len(
+                        profiles[
+                            risk_level
+                        ][gender]
+                    )
+                    < gender_quotas[gender]
+                ):
+                    return False
+
+        return True
+
     while (
-        any(
-            len(class_rows) < rows_per_class
-            for class_rows in profiles.values()
-        )
+        not generation_complete()
         and attempts < maximum_attempts
     ):
         attempts += 1
 
-        profile: dict[str, object] = {
+        academic_profile: dict[
+            str,
+            object,
+        ] = {
             "attendance": round(
                 float(
                     rng.uniform(0, 100)
@@ -317,20 +420,11 @@ def generate_balanced_synthetic_data(
             "semester": int(
                 rng.integers(1, 9)
             ),
-            "gender": str(
-                rng.choice(
-                    [
-                        "Male",
-                        "Female",
-                        "Other",
-                    ]
-                )
-            ),
         }
 
         performance_score = (
             calculate_performance_score(
-                profile
+                academic_profile
             )
         )
 
@@ -341,52 +435,100 @@ def generate_balanced_synthetic_data(
         )
 
         if (
-            risk_level not in profiles
+            risk_level
+            not in profiles
         ):
             continue
 
-        if (
-            len(profiles[risk_level])
-            >= rows_per_class
-        ):
+        available_genders = [
+            gender
+            for gender in GENDERS
+            if (
+                len(
+                    profiles[
+                        risk_level
+                    ][gender]
+                )
+                < gender_quotas[gender]
+            )
+        ]
+
+        if not available_genders:
             continue
 
-        profiles[risk_level].append(
+        selected_gender = str(
+            rng.choice(
+                available_genders
+            )
+        )
+
+        profiles[
+            risk_level
+        ][selected_gender].append(
             {
-                **profile,
+                **academic_profile,
+                "gender": (
+                    selected_gender
+                ),
                 "performance_score": (
                     performance_score
                 ),
-                TARGET_COLUMN: risk_level,
+                TARGET_COLUMN: (
+                    risk_level
+                ),
             }
         )
 
-    incomplete_classes = {
-        risk_level: len(class_rows)
-        for risk_level, class_rows
-        in profiles.items()
-        if len(class_rows) < rows_per_class
-    }
+    incomplete_groups: dict[
+        str,
+        int,
+    ] = {}
 
-    if incomplete_classes:
+    for risk_level in EXPECTED_CLASSES:
+        for gender in GENDERS:
+            current_count = len(
+                profiles[
+                    risk_level
+                ][gender]
+            )
+
+            expected_count = (
+                gender_quotas[gender]
+            )
+
+            if (
+                current_count
+                < expected_count
+            ):
+                incomplete_groups[
+                    (
+                        f"{risk_level} | "
+                        f"{gender}"
+                    )
+                ] = current_count
+
+    if incomplete_groups:
         raise RuntimeError(
             "Could not generate enough balanced "
             "synthetic records. Generated counts: "
-            f"{incomplete_classes}"
+            f"{incomplete_groups}"
         )
 
-    rows = (
-        profiles["High Risk"]
-        + profiles["Medium Risk"]
-        + profiles["Low Risk"]
-    )
+    rows: list[
+        dict[str, object]
+    ] = []
 
-    synthetic_dataframe = pd.DataFrame(
-        rows
-    )
+    for risk_level in EXPECTED_CLASSES:
+        for gender in GENDERS:
+            rows.extend(
+                profiles[
+                    risk_level
+                ][gender]
+            )
 
     synthetic_dataframe = (
-        synthetic_dataframe.sample(
+        pd.DataFrame(rows)
+        .sample(
             frac=1,
             random_state=random_state,
         )
@@ -397,7 +539,7 @@ def generate_balanced_synthetic_data(
 
 
 # ============================================================
-# 6. VALIDATE DATASET
+# 7. VALIDATE DATASET
 # ============================================================
 
 def validate_dataset(
@@ -411,7 +553,8 @@ def validate_dataset(
     missing_columns = [
         column
         for column in required_columns
-        if column not in dataframe.columns
+        if column
+        not in dataframe.columns
     ]
 
     if missing_columns:
@@ -438,9 +581,7 @@ def validate_dataset(
 
     dataframe["gender"] = (
         dataframe["gender"]
-        .astype("string")
-        .str.strip()
-        .str.title()
+        .map(normalize_gender)
     )
 
     dataframe[TARGET_COLUMN] = (
@@ -451,9 +592,30 @@ def validate_dataset(
     )
 
     dataframe.dropna(
-        subset=required_columns,
+        subset=(
+            NUMERIC_FEATURES
+            + [
+                "semester",
+                TARGET_COLUMN,
+            ]
+        ),
         inplace=True,
     )
+
+    invalid_risk_classes = sorted(
+        set(
+            dataframe[
+                TARGET_COLUMN
+            ].unique()
+        )
+        - set(EXPECTED_CLASSES)
+    )
+
+    if invalid_risk_classes:
+        raise ValueError(
+            "Dataset contains invalid risk labels: "
+            f"{invalid_risk_classes}"
+        )
 
     dataframe["attendance"] = (
         dataframe["attendance"]
@@ -488,7 +650,125 @@ def validate_dataset(
 
 
 # ============================================================
-# 7. CREATE PREPROCESSING PIPELINE
+# 8. CREATE FAIRNESS-AWARE SAMPLE WEIGHTS
+# ============================================================
+
+def create_fairness_weights(
+    features: pd.DataFrame,
+    target: pd.Series,
+) -> np.ndarray:
+    """
+    Reweight each gender-risk combination.
+
+    Underrepresented gender-risk groups receive
+    higher training importance, while overrepresented
+    groups receive lower importance.
+    """
+
+    genders = (
+        features["gender"]
+        .map(normalize_gender)
+        .astype(str)
+    )
+
+    target_values = pd.Series(
+        np.asarray(target),
+        index=features.index,
+        dtype="string",
+    )
+
+    combined_groups = (
+        genders
+        + " | "
+        + target_values.astype(str)
+    )
+
+    group_counts = (
+        combined_groups
+        .value_counts()
+    )
+
+    if group_counts.empty:
+        raise ValueError(
+            "Cannot create fairness weights "
+            "from an empty training dataset."
+        )
+
+    total_samples = len(
+        combined_groups
+    )
+
+    total_groups = len(
+        group_counts
+    )
+
+    raw_weights = (
+        combined_groups.map(
+            lambda group_name: (
+                total_samples
+                / (
+                    total_groups
+                    * group_counts[
+                        group_name
+                    ]
+                )
+            )
+        )
+        .astype(float)
+        .to_numpy()
+    )
+
+    mean_weight = float(
+        np.mean(raw_weights)
+    )
+
+    if mean_weight > 0:
+        raw_weights = (
+            raw_weights
+            / mean_weight
+        )
+
+    # Prevent very small real-data groups from
+    # receiving extreme weights.
+    fairness_weights = np.clip(
+        raw_weights,
+        0.25,
+        4.0,
+    )
+
+    print(
+        "\nGender-risk training groups:"
+    )
+
+    print(
+        group_counts.sort_index()
+    )
+
+    weight_summary = pd.DataFrame(
+        {
+            "Group": combined_groups,
+            "Weight": fairness_weights,
+        }
+    )
+
+    print(
+        "\nAverage sample weight "
+        "by gender-risk group:"
+    )
+
+    print(
+        weight_summary
+        .groupby("Group")["Weight"]
+        .mean()
+        .round(4)
+        .sort_index()
+    )
+
+    return fairness_weights
+
+
+# ============================================================
+# 9. CREATE PREPROCESSING PIPELINE
 # ============================================================
 
 def create_preprocessor() -> ColumnTransformer:
@@ -510,7 +790,7 @@ def create_preprocessor() -> ColumnTransformer:
 
 
 # ============================================================
-# 8. CREATE BASELINE PIPELINE
+# 10. CREATE BASELINE PIPELINE
 # ============================================================
 
 def create_baseline_pipeline() -> Pipeline:
@@ -529,7 +809,9 @@ def create_baseline_pipeline() -> Pipeline:
                     min_samples_leaf=1,
                     max_features="sqrt",
                     class_weight="balanced",
-                    random_state=42,
+                    random_state=(
+                        RANDOM_STATE
+                    ),
                     n_jobs=-1,
                 ),
             ),
@@ -538,15 +820,218 @@ def create_baseline_pipeline() -> Pipeline:
 
 
 # ============================================================
-# 9. TEST OBVIOUS EXAMPLES
+# 11. GENDER FAIRNESS REPORT
 # ============================================================
 
-def test_obvious_examples(
+def evaluate_gender_fairness(
+    model_name: str,
     model: Pipeline,
-) -> None:
-    test_cases = [
+    test_features: pd.DataFrame,
+    test_target: pd.Series,
+) -> pd.DataFrame:
+    """
+    Evaluate model performance separately for
+    Male, Female and Other students.
+    """
+
+    predictions = model.predict(
+        test_features
+    )
+
+    genders = (
+        test_features["gender"]
+        .map(normalize_gender)
+    )
+
+    actual_values = np.asarray(
+        test_target
+    )
+
+    rows: list[
+        dict[str, object]
+    ] = []
+
+    for gender in GENDERS:
+        mask = (
+            genders == gender
+        ).to_numpy()
+
+        if not np.any(mask):
+            continue
+
+        group_actual = (
+            actual_values[mask]
+        )
+
+        group_predictions = (
+            predictions[mask]
+        )
+
+        group_accuracy = (
+            accuracy_score(
+                group_actual,
+                group_predictions,
+            )
+        )
+
+        group_macro_f1 = f1_score(
+            group_actual,
+            group_predictions,
+            labels=EXPECTED_CLASSES,
+            average="macro",
+            zero_division=0,
+        )
+
+        high_risk_recall = recall_score(
+            (
+                group_actual
+                == "High Risk"
+            ),
+            (
+                group_predictions
+                == "High Risk"
+            ),
+            zero_division=0,
+        )
+
+        actual_high_risk_rate = float(
+            np.mean(
+                group_actual
+                == "High Risk"
+            )
+        )
+
+        predicted_high_risk_rate = float(
+            np.mean(
+                group_predictions
+                == "High Risk"
+            )
+        )
+
+        rows.append(
+            {
+                "Model": model_name,
+                "Gender": gender,
+                "Samples": len(
+                    group_actual
+                ),
+                "Accuracy": (
+                    group_accuracy
+                ),
+                "Macro F1": (
+                    group_macro_f1
+                ),
+                "High Risk Recall": (
+                    high_risk_recall
+                ),
+                "Actual High Risk Rate": (
+                    actual_high_risk_rate
+                ),
+                "Predicted High Risk Rate": (
+                    predicted_high_risk_rate
+                ),
+            }
+        )
+
+    fairness_dataframe = pd.DataFrame(
+        rows
+    )
+
+    print(
+        f"\n========== {model_name} "
+        "GENDER FAIRNESS REPORT =========="
+    )
+
+    if fairness_dataframe.empty:
+        print(
+            "No gender-group results are available."
+        )
+
+        return fairness_dataframe
+
+    printable_dataframe = (
+        fairness_dataframe.copy()
+    )
+
+    numeric_columns = [
+        "Accuracy",
+        "Macro F1",
+        "High Risk Recall",
+        "Actual High Risk Rate",
+        "Predicted High Risk Rate",
+    ]
+
+    printable_dataframe[
+        numeric_columns
+    ] = (
+        printable_dataframe[
+            numeric_columns
+        ].round(4)
+    )
+
+    print(
+        printable_dataframe.to_string(
+            index=False
+        )
+    )
+
+    accuracy_gap = (
+        fairness_dataframe[
+            "Accuracy"
+        ].max()
+        - fairness_dataframe[
+            "Accuracy"
+        ].min()
+    )
+
+    macro_f1_gap = (
+        fairness_dataframe[
+            "Macro F1"
+        ].max()
+        - fairness_dataframe[
+            "Macro F1"
+        ].min()
+    )
+
+    high_risk_recall_gap = (
+        fairness_dataframe[
+            "High Risk Recall"
+        ].max()
+        - fairness_dataframe[
+            "High Risk Recall"
+        ].min()
+    )
+
+    print(
+        "\nAccuracy gap: "
+        f"{accuracy_gap:.4f}"
+    )
+
+    print(
+        "Macro F1 gap: "
+        f"{macro_f1_gap:.4f}"
+    )
+
+    print(
+        "High Risk Recall gap: "
+        f"{high_risk_recall_gap:.4f}"
+    )
+
+    return fairness_dataframe
+
+
+# ============================================================
+# 12. TEST OBVIOUS EXAMPLES
+# ============================================================
+
+def get_obvious_test_cases() -> list[
+    dict[str, object]
+]:
+    return [
         {
-            "name": "High-risk example",
+            "name": (
+                "High-risk example"
+            ),
             "expected": "High Risk",
             "features": {
                 "attendance": 19,
@@ -555,11 +1040,12 @@ def test_obvious_examples(
                 "quiz_score": 1,
                 "previous_gpa": 1.0,
                 "semester": 6,
-                "gender": "Male",
             },
         },
         {
-            "name": "Medium-risk example",
+            "name": (
+                "Medium-risk example"
+            ),
             "expected": "Medium Risk",
             "features": {
                 "attendance": 62,
@@ -568,11 +1054,12 @@ def test_obvious_examples(
                 "quiz_score": 58,
                 "previous_gpa": 2.4,
                 "semester": 5,
-                "gender": "Female",
             },
         },
         {
-            "name": "Low-risk example",
+            "name": (
+                "Low-risk example"
+            ),
             "expected": "Low Risk",
             "features": {
                 "attendance": 90,
@@ -581,10 +1068,17 @@ def test_obvious_examples(
                 "quiz_score": 82,
                 "previous_gpa": 3.6,
                 "semester": 4,
-                "gender": "Female",
             },
         },
     ]
+
+
+def test_obvious_examples(
+    model: Pipeline,
+) -> None:
+    test_cases = (
+        get_obvious_test_cases()
+    )
 
     print(
         "\n========== OBVIOUS CASE TESTS =========="
@@ -593,8 +1087,16 @@ def test_obvious_examples(
     failed_cases: list[str] = []
 
     for test_case in test_cases:
+        features = dict(
+            test_case["features"]
+        )
+
+        features["gender"] = (
+            "Female"
+        )
+
         test_dataframe = pd.DataFrame(
-            [test_case["features"]]
+            [features]
         )
 
         prediction = str(
@@ -610,7 +1112,9 @@ def test_obvious_examples(
         )
 
         probability_result = {
-            str(class_name): float(probability)
+            str(class_name): float(
+                probability
+            )
             for class_name, probability
             in zip(
                 model.classes_,
@@ -642,7 +1146,9 @@ def test_obvious_examples(
             != test_case["expected"]
         ):
             failed_cases.append(
-                str(test_case["name"])
+                str(
+                    test_case["name"]
+                )
             )
 
     if failed_cases:
@@ -658,7 +1164,203 @@ def test_obvious_examples(
 
 
 # ============================================================
-# 10. TRAIN MODELS
+# 13. GENDER SENSITIVITY TEST
+# ============================================================
+
+def test_gender_sensitivity(
+    model: Pipeline,
+) -> pd.DataFrame:
+    """
+    Keep academic indicators unchanged and change
+    only gender.
+
+    Obvious academic profiles should retain the
+    same predicted risk class.
+    """
+
+    test_cases = (
+        get_obvious_test_cases()
+    )
+
+    report_rows: list[
+        dict[str, object]
+    ] = []
+
+    failed_cases: list[str] = []
+
+    print(
+        "\n========== GENDER SENSITIVITY TEST =========="
+    )
+
+    for test_case in test_cases:
+        case_predictions: list[str] = []
+
+        expected_class = str(
+            test_case["expected"]
+        )
+
+        expected_probabilities: list[
+            float
+        ] = []
+
+        print(
+            f"\n{test_case['name']}"
+        )
+
+        for gender in GENDERS:
+            test_features = {
+                **dict(
+                    test_case[
+                        "features"
+                    ]
+                ),
+                "gender": gender,
+            }
+
+            test_dataframe = pd.DataFrame(
+                [test_features]
+            )
+
+            prediction = str(
+                model.predict(
+                    test_dataframe
+                )[0]
+            )
+
+            raw_probabilities = (
+                model.predict_proba(
+                    test_dataframe
+                )[0]
+            )
+
+            probability_map = {
+                str(class_name): float(
+                    probability
+                )
+                for class_name, probability
+                in zip(
+                    model.classes_,
+                    raw_probabilities,
+                )
+            }
+
+            expected_probability = (
+                probability_map.get(
+                    expected_class,
+                    0.0,
+                )
+            )
+
+            case_predictions.append(
+                prediction
+            )
+
+            expected_probabilities.append(
+                expected_probability
+            )
+
+            print(
+                f"{gender}: "
+                f"{prediction} | "
+                f"{probability_map}"
+            )
+
+            report_rows.append(
+                {
+                    "Test Case": (
+                        test_case["name"]
+                    ),
+                    "Expected Class": (
+                        expected_class
+                    ),
+                    "Gender": gender,
+                    "Predicted Class": (
+                        prediction
+                    ),
+                    "High Risk Probability": (
+                        probability_map.get(
+                            "High Risk",
+                            0.0,
+                        )
+                    ),
+                    "Medium Risk Probability": (
+                        probability_map.get(
+                            "Medium Risk",
+                            0.0,
+                        )
+                    ),
+                    "Low Risk Probability": (
+                        probability_map.get(
+                            "Low Risk",
+                            0.0,
+                        )
+                    ),
+                }
+            )
+
+            if (
+                prediction
+                != expected_class
+            ):
+                failed_cases.append(
+                    (
+                        f"{test_case['name']} "
+                        f"with gender {gender}"
+                    )
+                )
+
+        unique_predictions = set(
+            case_predictions
+        )
+
+        if len(unique_predictions) > 1:
+            failed_cases.append(
+                (
+                    f"{test_case['name']} "
+                    "changed class when only "
+                    "gender was changed"
+                )
+            )
+
+        probability_spread = (
+            max(
+                expected_probabilities
+            )
+            - min(
+                expected_probabilities
+            )
+        )
+
+        print(
+            "Expected-class probability "
+            "difference across genders: "
+            f"{probability_spread:.4f}"
+        )
+
+        if probability_spread > 0.05:
+            print(
+                "Warning: gender changed the "
+                "expected-class probability by "
+                "more than 5 percentage points."
+            )
+
+    if failed_cases:
+        raise RuntimeError(
+            "Gender sensitivity tests failed: "
+            f"{failed_cases}"
+        )
+
+    print(
+        "\nGender sensitivity tests passed."
+    )
+
+    return pd.DataFrame(
+        report_rows
+    )
+
+
+# ============================================================
+# 14. TRAIN MODELS
 # ============================================================
 
 def train_models() -> None:
@@ -717,13 +1419,29 @@ def train_models() -> None:
     )
 
     print(
-        "\nGenerating balanced synthetic data..."
+        "\nOriginal gender-risk distribution:"
+    )
+
+    print(
+        pd.crosstab(
+            real_training_data[
+                "gender"
+            ],
+            real_training_data[
+                TARGET_COLUMN
+            ],
+        )
+    )
+
+    print(
+        "\nGenerating risk- and "
+        "gender-balanced synthetic data..."
     )
 
     synthetic_training_data = (
         generate_balanced_synthetic_data(
             rows_per_class=1000,
-            random_state=42,
+            random_state=RANDOM_STATE,
         )
     )
 
@@ -742,6 +1460,21 @@ def train_models() -> None:
         ].value_counts()
     )
 
+    print(
+        "\nSynthetic gender-risk distribution:"
+    )
+
+    print(
+        pd.crosstab(
+            synthetic_training_data[
+                "gender"
+            ],
+            synthetic_training_data[
+                TARGET_COLUMN
+            ],
+        )
+    )
+
     combined_dataframe = pd.concat(
         [
             real_training_data,
@@ -756,7 +1489,7 @@ def train_models() -> None:
     combined_dataframe = (
         combined_dataframe.sample(
             frac=1,
-            random_state=42,
+            random_state=RANDOM_STATE,
         )
         .reset_index(drop=True)
     )
@@ -780,13 +1513,49 @@ def train_models() -> None:
         ].value_counts()
     )
 
-    print(combined_distribution)
+    print(
+        combined_distribution
+    )
+
+    print(
+        "\nCombined gender-risk distribution:"
+    )
+
+    combined_gender_risk_report = (
+        combined_dataframe
+        .groupby(
+            [
+                "gender",
+                TARGET_COLUMN,
+            ],
+            observed=False,
+        )
+        .size()
+        .reset_index(
+            name="Count"
+        )
+    )
+
+    print(
+        combined_gender_risk_report
+        .to_string(
+            index=False
+        )
+    )
+
+    combined_gender_risk_report.to_csv(
+        REPORT_DIR
+        / "training_gender_risk_distribution.csv",
+        index=False,
+    )
 
     missing_classes = [
         risk_class
         for risk_class in EXPECTED_CLASSES
-        if risk_class
-        not in combined_distribution.index
+        if (
+            risk_class
+            not in combined_distribution.index
+        )
     ]
 
     if missing_classes:
@@ -799,10 +1568,13 @@ def train_models() -> None:
     insufficient_classes = [
         risk_class
         for risk_class in EXPECTED_CLASSES
-        if combined_distribution.get(
-            risk_class,
-            0,
-        ) < 2
+        if (
+            combined_distribution.get(
+                risk_class,
+                0,
+            )
+            < 2
+        )
     ]
 
     if insufficient_classes:
@@ -820,6 +1592,41 @@ def train_models() -> None:
         TARGET_COLUMN
     ].copy()
 
+    joint_stratification = (
+        target.astype(str)
+        + " | "
+        + features[
+            "gender"
+        ].astype(str)
+    )
+
+    joint_group_counts = (
+        joint_stratification
+        .value_counts()
+    )
+
+    if (
+        not joint_group_counts.empty
+        and (
+            joint_group_counts >= 2
+        ).all()
+    ):
+        stratification_values = (
+            joint_stratification
+        )
+
+        print(
+            "\nUsing risk + gender "
+            "stratified train/test split."
+        )
+    else:
+        stratification_values = target
+
+        print(
+            "\nUsing risk-only stratified "
+            "train/test split."
+        )
+
     (
         training_features,
         testing_features,
@@ -829,8 +1636,8 @@ def train_models() -> None:
         features,
         target,
         test_size=0.2,
-        random_state=42,
-        stratify=target,
+        random_state=RANDOM_STATE,
+        stratify=stratification_values,
     )
 
     print(
@@ -843,17 +1650,28 @@ def train_models() -> None:
         len(testing_features),
     )
 
+    fairness_weights = (
+        create_fairness_weights(
+            training_features,
+            training_target,
+        )
+    )
+
     baseline_pipeline = (
         create_baseline_pipeline()
     )
 
     print(
-        "\nTraining baseline model..."
+        "\nTraining baseline model "
+        "with fairness weights..."
     )
 
     baseline_pipeline.fit(
         training_features,
         training_target,
+        classifier__sample_weight=(
+            fairness_weights
+        ),
     )
 
     baseline_metrics = evaluate_model(
@@ -861,6 +1679,15 @@ def train_models() -> None:
         baseline_pipeline,
         testing_features,
         testing_target,
+    )
+
+    baseline_fairness = (
+        evaluate_gender_fairness(
+            "Baseline Random Forest",
+            baseline_pipeline,
+            testing_features,
+            testing_target,
+        )
     )
 
     parameter_distributions = {
@@ -899,26 +1726,32 @@ def train_models() -> None:
     }
 
     search = RandomizedSearchCV(
-        estimator=create_baseline_pipeline(),
+        estimator=(
+            create_baseline_pipeline()
+        ),
         param_distributions=(
             parameter_distributions
         ),
         n_iter=15,
         scoring="f1_macro",
         cv=3,
-        random_state=42,
+        random_state=RANDOM_STATE,
         n_jobs=-1,
         verbose=1,
         refit=True,
     )
 
     print(
-        "\nTraining tuned model..."
+        "\nTraining tuned model "
+        "with fairness weights..."
     )
 
     search.fit(
         training_features,
         training_target,
+        classifier__sample_weight=(
+            fairness_weights
+        ),
     )
 
     tuned_pipeline = (
@@ -930,6 +1763,15 @@ def train_models() -> None:
         tuned_pipeline,
         testing_features,
         testing_target,
+    )
+
+    tuned_fairness = (
+        evaluate_gender_fairness(
+            "Tuned Random Forest",
+            tuned_pipeline,
+            testing_features,
+            testing_target,
+        )
     )
 
     baseline_model_path = (
@@ -953,25 +1795,49 @@ def train_models() -> None:
     )
 
     baseline_f1 = float(
-        baseline_metrics["Macro F1"]
+        baseline_metrics[
+            "Macro F1"
+        ]
     )
 
     tuned_f1 = float(
-        tuned_metrics["Macro F1"]
+        tuned_metrics[
+            "Macro F1"
+        ]
     )
 
     if tuned_f1 >= baseline_f1:
-        best_model = tuned_pipeline
+        best_model = (
+            tuned_pipeline
+        )
+
         best_model_name = (
             "Tuned Random Forest"
         )
-        best_metrics = tuned_metrics
+
+        best_metrics = (
+            tuned_metrics
+        )
+
+        best_fairness = (
+            tuned_fairness
+        )
     else:
-        best_model = baseline_pipeline
+        best_model = (
+            baseline_pipeline
+        )
+
         best_model_name = (
             "Baseline Random Forest"
         )
-        best_metrics = baseline_metrics
+
+        best_metrics = (
+            baseline_metrics
+        )
+
+        best_fairness = (
+            baseline_fairness
+        )
 
     print(
         "\nTesting selected model with "
@@ -980,6 +1846,12 @@ def train_models() -> None:
 
     test_obvious_examples(
         best_model
+    )
+
+    gender_sensitivity_report = (
+        test_gender_sensitivity(
+            best_model
+        )
     )
 
     best_model_path = (
@@ -992,11 +1864,13 @@ def train_models() -> None:
         best_model_path,
     )
 
-    comparison_dataframe = pd.DataFrame(
-        [
-            baseline_metrics,
-            tuned_metrics,
-        ]
+    comparison_dataframe = (
+        pd.DataFrame(
+            [
+                baseline_metrics,
+                tuned_metrics,
+            ]
+        )
     )
 
     comparison_dataframe.to_csv(
@@ -1005,19 +1879,47 @@ def train_models() -> None:
         index=False,
     )
 
-    training_features_report = pd.DataFrame(
-        {
-            "Feature": FEATURE_COLUMNS,
-            "Type": [
-                "numeric",
-                "numeric",
-                "numeric",
-                "numeric",
-                "numeric",
-                "categorical",
-                "categorical",
-            ],
-        }
+    baseline_fairness.to_csv(
+        REPORT_DIR
+        / "gender_fairness_baseline.csv",
+        index=False,
+    )
+
+    tuned_fairness.to_csv(
+        REPORT_DIR
+        / "gender_fairness_tuned.csv",
+        index=False,
+    )
+
+    best_fairness.to_csv(
+        REPORT_DIR
+        / "gender_fairness_selected_model.csv",
+        index=False,
+    )
+
+    gender_sensitivity_report.to_csv(
+        REPORT_DIR
+        / "gender_sensitivity_report.csv",
+        index=False,
+    )
+
+    training_features_report = (
+        pd.DataFrame(
+            {
+                "Feature": (
+                    FEATURE_COLUMNS
+                ),
+                "Type": [
+                    "numeric",
+                    "numeric",
+                    "numeric",
+                    "numeric",
+                    "numeric",
+                    "categorical",
+                    "categorical",
+                ],
+            }
+        )
     )
 
     training_features_report.to_csv(
@@ -1028,8 +1930,12 @@ def train_models() -> None:
 
     class_distribution_report = (
         combined_distribution
-        .rename_axis("Risk Level")
-        .reset_index(name="Count")
+        .rename_axis(
+            "Risk Level"
+        )
+        .reset_index(
+            name="Count"
+        )
     )
 
     class_distribution_report.to_csv(
@@ -1059,52 +1965,80 @@ def train_models() -> None:
         "\nBest model metrics:"
     )
 
-    for metric_name, metric_value in (
-        best_metrics.items()
-    ):
+    for (
+        metric_name,
+        metric_value,
+    ) in best_metrics.items():
         print(
-            f"{metric_name}: {metric_value}"
+            f"{metric_name}: "
+            f"{metric_value}"
         )
 
     print(
         "\nBest model saved to:"
     )
 
-    print(best_model_path)
+    print(
+        best_model_path
+    )
 
     print(
         "\nBaseline model saved to:"
     )
 
-    print(baseline_model_path)
+    print(
+        baseline_model_path
+    )
 
     print(
         "\nTuned model saved to:"
     )
 
-    print(tuned_model_path)
+    print(
+        tuned_model_path
+    )
 
     print(
         "\nBest tuned parameters:"
     )
 
-    print(search.best_params_)
+    print(
+        search.best_params_
+    )
 
     print(
         "\nSynthetic training data saved to:"
     )
 
-    print(SYNTHETIC_DATA_PATH)
+    print(
+        SYNTHETIC_DATA_PATH
+    )
 
     print(
         "\nCombined training data saved to:"
     )
 
-    print(COMBINED_DATA_PATH)
+    print(
+        COMBINED_DATA_PATH
+    )
+
+    print(
+        "\nFairness reports saved to:"
+    )
+
+    print(
+        REPORT_DIR
+        / "gender_fairness_selected_model.csv"
+    )
+
+    print(
+        REPORT_DIR
+        / "gender_sensitivity_report.csv"
+    )
 
 
 # ============================================================
-# 11. ENTRY POINT
+# 15. ENTRY POINT
 # ============================================================
 
 if __name__ == "__main__":
