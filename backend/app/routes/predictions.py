@@ -182,6 +182,7 @@ def generate_prediction(
     return generate_prediction_for_student(
         db=db,
         student_id=student_id,
+        actor_id=current_user.id,
     )
 
 @router.get(
