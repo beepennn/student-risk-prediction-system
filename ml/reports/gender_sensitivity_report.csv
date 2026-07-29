@@ -1,0 +1,10 @@
+Test Case,Expected Class,Gender,Predicted Class,High Risk Probability,Medium Risk Probability,Low Risk Probability
+High-risk example,High Risk,Male,High Risk,0.99,0.01,0.0
+High-risk example,High Risk,Female,High Risk,0.99,0.01,0.0
+High-risk example,High Risk,Other,High Risk,0.9966666666666667,0.0033333333333333335,0.0
+Medium-risk example,Medium Risk,Male,Medium Risk,0.0,0.99,0.01
+Medium-risk example,Medium Risk,Female,Medium Risk,0.0,0.9866666666666667,0.013333333333333334
+Medium-risk example,Medium Risk,Other,Medium Risk,0.03333333333333333,0.8666666666666667,0.1
+Low-risk example,Low Risk,Male,Low Risk,0.0,0.0,1.0
+Low-risk example,Low Risk,Female,Low Risk,0.0,0.0,1.0
+Low-risk example,Low Risk,Other,Low Risk,0.0,0.0033333333333333335,0.9966666666666667

@@ -1,18 +1,21 @@
-import type { ReactNode } from "react";
+import type {
+  ReactNode,
+} from "react";
 
 import {
   FiActivity,
   FiBarChart2,
   FiBell,
   FiBookOpen,
+  FiClock,
+  FiFileText,
   FiHome,
   FiLogOut,
   FiTarget,
   FiTrendingUp,
   FiUser,
   FiUsers,
-  FiFileText,
-  FiClock,
+  FiX,
 } from "react-icons/fi";
 
 import {
@@ -21,7 +24,9 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import { useAuth } from "../../features/auth/context/useAuth";
+import {
+  useAuth,
+} from "../../features/auth/context/useAuth";
 
 
 interface SidebarItem {
@@ -31,13 +36,26 @@ interface SidebarItem {
 }
 
 
-function Sidebar() {
-  const { user, logout } = useAuth();
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+
+function Sidebar({
+  isOpen,
+  onClose,
+}: SidebarProps) {
+  const {
+    user,
+    logout,
+  } = useAuth();
 
   const location = useLocation();
   const navigate = useNavigate();
 
   const pathname = location.pathname;
+
 
   const adminMenu: SidebarItem[] = [
     {
@@ -82,6 +100,7 @@ function Sidebar() {
     },
   ];
 
+
   const teacherMenu: SidebarItem[] = [
     {
       name: "Dashboard",
@@ -99,6 +118,7 @@ function Sidebar() {
       icon: <FiActivity size={20} />,
     },
   ];
+
 
   const studentMenu: SidebarItem[] = [
     {
@@ -133,6 +153,7 @@ function Sidebar() {
     },
   ];
 
+
   function getMenuItems(): SidebarItem[] {
     const role =
       user?.role
@@ -154,6 +175,7 @@ function Sidebar() {
     return [];
   }
 
+
   function isMenuItemActive(
     path: string,
   ): boolean {
@@ -173,7 +195,9 @@ function Sidebar() {
     );
   }
 
+
   function handleLogout() {
+    onClose();
     logout();
 
     navigate(
@@ -184,76 +208,130 @@ function Sidebar() {
     );
   }
 
-  const menuItems = getMenuItems();
+
+  const menuItems =
+    getMenuItems();
+
 
   return (
-    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col overflow-y-auto bg-slate-900 text-white">
-      <div className="border-b border-slate-700 px-6 py-6">
-        <h1 className="text-xl font-bold">
-          StudentAlert
-        </h1>
+    <>
+      <button
+        type="button"
+        aria-label="Close navigation menu"
+        onClick={onClose}
+        className={`fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm transition-all duration-300 lg:hidden ${
+          isOpen
+            ? "visible opacity-100"
+            : "invisible opacity-0"
+        }`}
+      />
 
-        <p className="mt-1 text-sm text-slate-400">
-          Risk Prediction System
-        </p>
-      </div>
+      <aside
+        id="dashboard-sidebar"
+        className={`fixed inset-y-0 left-0 z-50 flex h-dvh w-72 max-w-[86vw] flex-col overflow-y-auto bg-slate-900 text-white shadow-2xl transition-transform duration-300 ease-out lg:sticky lg:top-0 lg:z-20 lg:h-screen lg:w-64 lg:max-w-none lg:translate-x-0 lg:shadow-none ${
+          isOpen
+            ? "translate-x-0"
+            : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-700 px-5 py-5 lg:px-6 lg:py-6">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold tracking-tight">
+              StudentAlert
+            </h1>
 
-      <div className="border-b border-slate-700 px-6 py-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600">
-            <FiUser size={21} />
+            <p className="mt-1 text-sm text-slate-400">
+              Risk Prediction System
+            </p>
           </div>
 
-          <div className="min-w-0">
-            <p className="truncate font-semibold">
-              {user?.full_name
-                || user?.email
-                || "User"}
-            </p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close sidebar"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-300 transition hover:bg-slate-800 hover:text-white lg:hidden"
+          >
+            <FiX size={22} />
+          </button>
+        </div>
 
-            <p className="truncate text-sm text-slate-400">
-              {user?.role || "Account"}
-            </p>
+
+        <div className="border-b border-slate-700 px-5 py-5 lg:px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600">
+              <FiUser size={21} />
+            </div>
+
+            <div className="min-w-0">
+              <p className="truncate font-semibold">
+                {user?.full_name
+                  || user?.email
+                  || "User"}
+              </p>
+
+              <p className="truncate text-sm text-slate-400">
+                {user?.role
+                  || "Account"}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <nav className="flex-1 space-y-2 px-4 py-6">
-        {menuItems.map((item) => {
-          const active =
-            isMenuItemActive(
-              item.path,
-            );
 
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition ${
-                active
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
-              }`}
-            >
-              {item.icon}
+        <nav className="flex-1 space-y-1.5 px-3 py-5 lg:px-4 lg:py-6">
+          {menuItems.map(
+            (item) => {
+              const active =
+                isMenuItemActive(
+                  item.path,
+                );
 
-              <span>{item.name}</span>
-            </NavLink>
-          );
-        })}
-      </nav>
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={onClose}
+                  aria-current={
+                    active
+                      ? "page"
+                      : undefined
+                  }
+                  className={`flex min-h-11 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
+                    active
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  }`}
+                >
+                  <span className="shrink-0">
+                    {item.icon}
+                  </span>
 
-      <div className="border-t border-slate-700 p-4">
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-red-600 hover:text-white"
-        >
-          <FiLogOut size={20} />
-          Logout
-        </button>
-      </div>
-    </aside>
+                  <span className="min-w-0 truncate">
+                    {item.name}
+                  </span>
+                </NavLink>
+              );
+            },
+          )}
+        </nav>
+
+
+        <div className="border-t border-slate-700 p-3 lg:p-4">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-red-600 hover:text-white"
+          >
+            <FiLogOut
+              size={20}
+              className="shrink-0"
+            />
+
+            Logout
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }
 

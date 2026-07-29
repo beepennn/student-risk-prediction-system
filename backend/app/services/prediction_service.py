@@ -364,6 +364,7 @@ def prediction_matches(
 def generate_prediction_for_student(
     db: Session,
     student_id: int,
+    actor_id: int | None = None,
 ):
     academic = (
         get_latest_academic_record(
@@ -419,21 +420,22 @@ def generate_prediction_for_student(
             generated_prediction,
         )
     ):
-        # /*
-        #  * The prediction has not changed, but the recommendation
-        #  * may still be an old generic recommendation.
-        #  *
-        #  * Regenerate and update it using the current academic
-        #  * features and SHAP values.
-        #  */
         generate_recommendation(
             db=db,
             prediction=latest_prediction,
-            student_features=(
-                student_features
-            ),
+            student_features=student_features,
             shap_values=shap_values,
         )
+
+        if actor_id is not None:
+            create_audit_log(
+                db=db,
+                user_id=actor_id,
+                action="GENERATE",
+                entity="Prediction",
+                entity_id=latest_prediction.id,
+            )
+
 
         return (
             PredictionResponse
@@ -476,6 +478,16 @@ def generate_prediction_for_student(
         student_id=student_id,
         recommendation=recommendation,
     )
+
+    if actor_id is not None:
+        create_audit_log(
+            db=db,
+            user_id=actor_id,
+            action="GENERATE",
+            entity="Prediction",
+            entity_id=saved_prediction.id,
+        )
+
 
     return (
         PredictionResponse

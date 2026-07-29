@@ -1,363 +1,647 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models.student import Student
-from app.models.prediction import Prediction
+from app.models.audit_log import AuditLog
 from app.models.intervention import Intervention
-from app.models.user import User
 from app.models.notification import Notification
+from app.models.prediction import Prediction
 from app.models.recommendation import Recommendation
+from app.models.student import Student
+from app.models.user import User
 
-def get_department_statistics(db: Session):
-    departments = (
-        db.query(Student.department)
-        .distinct()
+
+HIGH_RISK = "High Risk"
+MEDIUM_RISK = "Medium Risk"
+LOW_RISK = "Low Risk"
+
+
+def normalize_risk_level(
+    risk_level: str | None,
+) -> str:
+    """
+    Convert old and current risk labels into one
+    consistent format.
+    """
+
+    normalized = (
+        str(risk_level or "")
+        .strip()
+        .lower()
+    )
+
+    if normalized in {
+        "high",
+        "high risk",
+    }:
+        return HIGH_RISK
+
+    if normalized in {
+        "medium",
+        "medium risk",
+    }:
+        return MEDIUM_RISK
+
+    if normalized in {
+        "low",
+        "low risk",
+    }:
+        return LOW_RISK
+
+    return ""
+
+
+def get_latest_predictions_by_student(
+    db: Session,
+) -> dict[int, Prediction]:
+    """
+    Return only the newest prediction row for
+    each student.
+    """
+
+    latest_prediction_ids = (
+        db.query(
+            func.max(
+                Prediction.id
+            ).label(
+                "prediction_id"
+            )
+        )
+        .group_by(
+            Prediction.student_id
+        )
+        .subquery()
+    )
+
+    predictions = (
+        db.query(Prediction)
+        .join(
+            latest_prediction_ids,
+            Prediction.id
+            == latest_prediction_ids
+            .c.prediction_id,
+        )
         .all()
+    )
+
+    return {
+        prediction.student_id: prediction
+        for prediction in predictions
+    }
+
+
+def count_risk_levels(
+    predictions: list[Prediction],
+) -> dict[str, int]:
+    counts = {
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+    }
+
+    for prediction in predictions:
+        risk_level = (
+            normalize_risk_level(
+                prediction.risk_level
+            )
+        )
+
+        if risk_level == HIGH_RISK:
+            counts["high"] += 1
+
+        elif risk_level == MEDIUM_RISK:
+            counts["medium"] += 1
+
+        elif risk_level == LOW_RISK:
+            counts["low"] += 1
+
+    return counts
+
+
+def get_department_statistics(
+    db: Session,
+):
+    departments = (
+        db.query(
+            Student.department
+        )
+        .distinct()
+        .order_by(
+            Student.department.asc()
+        )
+        .all()
+    )
+
+    latest_prediction_map = (
+        get_latest_predictions_by_student(
+            db
+        )
     )
 
     results = []
 
     for (department,) in departments:
-
         students = (
             db.query(Student)
-            .filter(Student.department == department)
+            .filter(
+                Student.department
+                == department
+            )
             .all()
         )
 
-        student_ids = [student.id for student in students]
+        department_predictions = [
+            latest_prediction_map[
+                student.id
+            ]
+            for student in students
+            if student.id
+            in latest_prediction_map
+        ]
 
-        latest_predictions = []
-
-        for student_id in student_ids:
-            prediction = (
-                db.query(Prediction)
-                .filter(Prediction.student_id == student_id)
-                .order_by(Prediction.id.desc())
-                .first()
+        risk_counts = (
+            count_risk_levels(
+                department_predictions
             )
-
-            if prediction:
-                latest_predictions.append(prediction)
+        )
 
         results.append(
             {
-                "department": department,
-                "total_students": len(students),
-                "high_risk": sum(
-                    1
-                    for prediction in latest_predictions
-                    if prediction.risk_level == "High"
+                "department": (
+                    department
+                    or "Not Specified"
                 ),
-                "medium_risk": sum(
-                    1
-                    for prediction in latest_predictions
-                    if prediction.risk_level == "Medium"
+                "total_students": len(
+                    students
                 ),
-                "low_risk": sum(
-                    1
-                    for prediction in latest_predictions
-                    if prediction.risk_level == "Low"
+                "high_risk": (
+                    risk_counts["high"]
+                ),
+                "medium_risk": (
+                    risk_counts["medium"]
+                ),
+                "low_risk": (
+                    risk_counts["low"]
                 ),
             }
         )
 
     return results
 
-def get_semester_statistics(db: Session):
+
+def get_semester_statistics(
+    db: Session,
+):
     semesters = (
-        db.query(Student.semester)
+        db.query(
+            Student.semester
+        )
         .distinct()
-        .order_by(Student.semester)
+        .order_by(
+            Student.semester.asc()
+        )
         .all()
+    )
+
+    latest_prediction_map = (
+        get_latest_predictions_by_student(
+            db
+        )
     )
 
     results = []
 
     for (semester,) in semesters:
-
         students = (
             db.query(Student)
-            .filter(Student.semester == semester)
+            .filter(
+                Student.semester
+                == semester
+            )
             .all()
         )
 
-        latest_predictions = []
+        semester_predictions = [
+            latest_prediction_map[
+                student.id
+            ]
+            for student in students
+            if student.id
+            in latest_prediction_map
+        ]
 
-        for student in students:
-            prediction = (
-                db.query(Prediction)
-                .filter(Prediction.student_id == student.id)
-                .order_by(Prediction.id.desc())
-                .first()
+        risk_counts = (
+            count_risk_levels(
+                semester_predictions
             )
-
-            if prediction:
-                latest_predictions.append(prediction)
+        )
 
         results.append(
             {
                 "semester": semester,
-                "total_students": len(students),
-                "high_risk": sum(
-                    1
-                    for prediction in latest_predictions
-                    if prediction.risk_level == "High"
+                "total_students": len(
+                    students
                 ),
-                "medium_risk": sum(
-                    1
-                    for prediction in latest_predictions
-                    if prediction.risk_level == "Medium"
+                "high_risk": (
+                    risk_counts["high"]
                 ),
-                "low_risk": sum(
-                    1
-                    for prediction in latest_predictions
-                    if prediction.risk_level == "Low"
+                "medium_risk": (
+                    risk_counts["medium"]
+                ),
+                "low_risk": (
+                    risk_counts["low"]
                 ),
             }
         )
 
     return results
 
-def get_teacher_statistics(db: Session):
 
+def get_teacher_statistics(
+    db: Session,
+):
     teachers = (
         db.query(User)
-        .filter(User.role == "Teacher")
+        .filter(
+            func.lower(
+                User.role
+            ) == "teacher"
+        )
+        .order_by(
+            User.id.desc()
+        )
         .all()
     )
 
     results = []
 
     for teacher in teachers:
-
         interventions = (
             db.query(Intervention)
             .filter(
-                Intervention.teacher_id == teacher.id
+                Intervention.teacher_id
+                == teacher.id
             )
             .all()
         )
 
         unique_students = {
             intervention.student_id
-            for intervention in interventions
+            for intervention
+            in interventions
         }
 
         results.append(
             {
-                "teacher_id": teacher.id,
-                "teacher_name": teacher.full_name,
-                "email": teacher.email,
-                "total_interventions": len(interventions),
-                "students_handled": len(unique_students),
+                "teacher_id": (
+                    teacher.id
+                ),
+                "teacher_name": (
+                    teacher.full_name
+                ),
+                "email": (
+                    teacher.email
+                ),
+                "total_interventions": (
+                    len(interventions)
+                ),
+                "students_handled": (
+                    len(unique_students)
+                ),
             }
         )
 
     return results
 
-def get_risk_trend(db: Session):
 
-    students = db.query(Student).all()
+def get_risk_trend(
+    db: Session,
+):
+    latest_predictions = list(
+        get_latest_predictions_by_student(
+            db
+        ).values()
+    )
 
-    latest_predictions = []
+    total = len(
+        latest_predictions
+    )
 
-    for student in students:
-        prediction = (
-            db.query(Prediction)
-            .filter(
-                Prediction.student_id == student.id
-            )
-            .order_by(
-                Prediction.id.desc()
-            )
-            .first()
+    risk_counts = (
+        count_risk_levels(
+            latest_predictions
         )
-
-        if prediction:
-            latest_predictions.append(prediction)
-
-    total = len(latest_predictions)
-
-    high = sum(
-        1
-        for prediction in latest_predictions
-        if prediction.risk_level == "High"
     )
 
-    medium = sum(
-        1
-        for prediction in latest_predictions
-        if prediction.risk_level == "Medium"
+    high_percentage = (
+        round(
+            (
+                risk_counts["high"]
+                / total
+            )
+            * 100,
+            2,
+        )
+        if total > 0
+        else 0
     )
 
-    low = sum(
-        1
-        for prediction in latest_predictions
-        if prediction.risk_level == "Low"
+    medium_percentage = (
+        round(
+            (
+                risk_counts["medium"]
+                / total
+            )
+            * 100,
+            2,
+        )
+        if total > 0
+        else 0
+    )
+
+    low_percentage = (
+        round(
+            (
+                risk_counts["low"]
+                / total
+            )
+            * 100,
+            2,
+        )
+        if total > 0
+        else 0
     )
 
     return {
         "total_predictions": total,
-        "high_risk_percentage": round(high / total * 100, 2) if total else 0,
-        "medium_risk_percentage": round(medium / total * 100, 2) if total else 0,
-        "low_risk_percentage": round(low / total * 100, 2) if total else 0,
+        "high_risk_percentage": (
+            high_percentage
+        ),
+        "medium_risk_percentage": (
+            medium_percentage
+        ),
+        "low_risk_percentage": (
+            low_percentage
+        ),
     }
 
-def get_system_activity(db: Session):
 
+def get_system_activity(
+    db: Session,
+):
     return {
-        "total_students": db.query(Student).count(),
-        "total_predictions": db.query(Prediction).count(),
-        "total_recommendations": db.query(Recommendation).count(),
-        "total_notifications": db.query(Notification).count(),
-        "total_interventions": db.query(Intervention).count(),
+        "total_students": (
+            db.query(Student)
+            .count()
+        ),
+        "total_predictions": (
+            db.query(Prediction)
+            .count()
+        ),
+        "total_recommendations": (
+            db.query(
+                Recommendation
+            )
+            .count()
+        ),
+        "total_notifications": (
+            db.query(
+                Notification
+            )
+            .count()
+        ),
+        "total_interventions": (
+            db.query(
+                Intervention
+            )
+            .count()
+        ),
     }
 
-def get_admin_dashboard_summary(db: Session):
+
+def get_latest_prediction_activity(
+    db: Session,
+) -> tuple[
+    Prediction | None,
+    object | None,
+]:
     """
-    Complete Admin Dashboard Summary
+    Find the most recent Generate Prediction action.
+
+    When no GENERATE audit event exists yet, use the
+    newest saved prediction as a fallback.
     """
 
-    # -----------------------------
-    # Basic counts
-    # -----------------------------
-
-    total_students = db.query(Student).count()
-
-    total_teachers = (
-        db.query(User)
-        .filter(User.role == "Teacher")
-        .count()
+    generation_activity = (
+        db.query(AuditLog)
+        .filter(
+            func.lower(
+                AuditLog.action
+            ) == "generate",
+            func.lower(
+                AuditLog.entity
+            ) == "prediction",
+        )
+        .order_by(
+            AuditLog.created_at.desc()
+        )
+        .first()
     )
 
-    total_predictions = db.query(Prediction).count()
-
-    total_recommendations = (
-        db.query(Recommendation).count()
-    )
-
-    total_notifications = (
-        db.query(Notification).count()
-    )
-
-    total_interventions = (
-        db.query(Intervention).count()
-    )
-
-    # -----------------------------
-    # Latest prediction of every student
-    # -----------------------------
-
-    students = db.query(Student).all()
-
-    latest_predictions = []
-
-    for student in students:
-
+    if generation_activity:
         prediction = (
             db.query(Prediction)
             .filter(
-                Prediction.student_id == student.id
-            )
-            .order_by(
-                Prediction.id.desc()
+                Prediction.id
+                == generation_activity
+                .entity_id
             )
             .first()
         )
 
         if prediction:
-            latest_predictions.append(prediction)
-
-    high = sum(
-        1
-        for prediction in latest_predictions
-        if prediction.risk_level == "High"
-    )
-
-    medium = sum(
-        1
-        for prediction in latest_predictions
-        if prediction.risk_level == "Medium"
-    )
-
-    low = sum(
-        1
-        for prediction in latest_predictions
-        if prediction.risk_level == "Low"
-    )
-
-    # -----------------------------
-    # Reuse existing functions
-    # -----------------------------
-
-    department_summary = get_department_statistics(db)
-
-    semester_summary = get_semester_statistics(db)
-
-    teacher_summary = get_teacher_statistics(db)
-
-    # -----------------------------
-    # Recent activity
-    # -----------------------------
+            return (
+                prediction,
+                generation_activity
+                .created_at,
+            )
 
     latest_prediction = (
         db.query(Prediction)
         .order_by(
-            Prediction.prediction_date.desc()
+            Prediction
+            .prediction_date
+            .desc()
         )
         .first()
+    )
+
+    if latest_prediction:
+        return (
+            latest_prediction,
+            latest_prediction
+            .prediction_date,
+        )
+
+    return None, None
+
+
+def get_admin_dashboard_summary(
+    db: Session,
+):
+    total_students = (
+        db.query(Student)
+        .count()
+    )
+
+    total_teachers = (
+        db.query(User)
+        .filter(
+            func.lower(
+                User.role
+            ) == "teacher"
+        )
+        .count()
+    )
+
+    total_predictions = (
+        db.query(Prediction)
+        .count()
+    )
+
+    total_recommendations = (
+        db.query(
+            Recommendation
+        )
+        .count()
+    )
+
+    total_notifications = (
+        db.query(
+            Notification
+        )
+        .count()
+    )
+
+    total_interventions = (
+        db.query(
+            Intervention
+        )
+        .count()
+    )
+
+    latest_prediction_map = (
+        get_latest_predictions_by_student(
+            db
+        )
+    )
+
+    latest_predictions = list(
+        latest_prediction_map.values()
+    )
+
+    risk_counts = (
+        count_risk_levels(
+            latest_predictions
+        )
+    )
+
+    department_summary = (
+        get_department_statistics(
+            db
+        )
+    )
+
+    semester_summary = (
+        get_semester_statistics(
+            db
+        )
+    )
+
+    teacher_summary = (
+        get_teacher_statistics(
+            db
+        )
+    )
+
+    (
+        latest_prediction,
+        latest_prediction_activity_date,
+    ) = get_latest_prediction_activity(
+        db
     )
 
     latest_intervention = (
         db.query(Intervention)
         .order_by(
-            Intervention.intervention_date.desc()
+            Intervention
+            .intervention_date
+            .desc()
         )
         .first()
     )
 
     return {
-
         "summary": {
-
-            "total_students": total_students,
-
-            "total_teachers": total_teachers,
-
-            "total_predictions": total_predictions,
-
-            "total_recommendations": total_recommendations,
-
-            "total_notifications": total_notifications,
-
-            "total_interventions": total_interventions,
-
+            "total_students": (
+                total_students
+            ),
+            "total_teachers": (
+                total_teachers
+            ),
+            "total_predictions": (
+                total_predictions
+            ),
+            "total_recommendations": (
+                total_recommendations
+            ),
+            "total_notifications": (
+                total_notifications
+            ),
+            "total_interventions": (
+                total_interventions
+            ),
         },
 
         "risk_distribution": {
-
-            "high": high,
-
-            "medium": medium,
-
-            "low": low,
-
+            "high": (
+                risk_counts["high"]
+            ),
+            "medium": (
+                risk_counts["medium"]
+            ),
+            "low": (
+                risk_counts["low"]
+            ),
         },
 
-        "department_summary": department_summary,
+        "department_summary": (
+            department_summary
+        ),
 
-        "semester_summary": semester_summary,
+        "semester_summary": (
+            semester_summary
+        ),
 
-        "teacher_summary": teacher_summary,
+        "teacher_summary": (
+            teacher_summary
+        ),
 
         "recent_activity": {
-
             "latest_prediction": (
                 {
-                    "student_id": latest_prediction.student_id,
-                    "risk_level": latest_prediction.risk_level,
-                    "date": latest_prediction.prediction_date,
+                    "student_id": (
+                        latest_prediction
+                        .student_id
+                    ),
+                    "risk_level": (
+                        normalize_risk_level(
+                            latest_prediction
+                            .risk_level
+                        )
+                    ),
+                    "date": (
+                        latest_prediction_activity_date
+                    ),
                 }
                 if latest_prediction
                 else None
@@ -365,13 +649,21 @@ def get_admin_dashboard_summary(db: Session):
 
             "latest_intervention": (
                 {
-                    "student_id": latest_intervention.student_id,
-                    "teacher_id": latest_intervention.teacher_id,
-                    "date": latest_intervention.intervention_date,
+                    "student_id": (
+                        latest_intervention
+                        .student_id
+                    ),
+                    "teacher_id": (
+                        latest_intervention
+                        .teacher_id
+                    ),
+                    "date": (
+                        latest_intervention
+                        .intervention_date
+                    ),
                 }
                 if latest_intervention
                 else None
             ),
-
         },
     }
