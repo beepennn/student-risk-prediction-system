@@ -16,6 +16,7 @@ import {
   FiUser,
   FiUsers,
   FiX,
+  FiUserCheck
 } from "react-icons/fi";
 
 import {
@@ -67,6 +68,11 @@ function Sidebar({
       name: "Students",
       path: "/admin/students",
       icon: <FiUsers size={20} />,
+    },
+    {
+      name: "Teachers",
+      path: "/admin/teachers",
+      icon: <FiUserCheck size={20} />,
     },
     {
       name: "Academic Records",
