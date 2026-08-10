@@ -143,75 +143,6 @@ def create_notification(
     return db_notification
 
 
-def _normalise_percentage(
-    value,
-) -> float:
-    try:
-        percentage = float(value)
-    except (TypeError, ValueError):
-        return 0.0
-
-    if 0 <= percentage <= 1:
-        percentage *= 100
-
-    return percentage
-
-
-def _get_prediction_confidence(
-    prediction: Prediction,
-) -> str:
-    confidence_percentage = getattr(
-        prediction,
-        "confidence_percentage",
-        None,
-    )
-
-    if confidence_percentage is not None:
-        percentage = _normalise_percentage(
-            confidence_percentage
-        )
-
-        return f"{percentage:.2f}%"
-
-    probabilities = [
-        getattr(
-            prediction,
-            "low_probability",
-            0,
-        ),
-        getattr(
-            prediction,
-            "medium_probability",
-            0,
-        ),
-        getattr(
-            prediction,
-            "high_probability",
-            0,
-        ),
-    ]
-
-    valid_probabilities: list[float] = []
-
-    for probability in probabilities:
-        try:
-            valid_probabilities.append(
-                float(probability)
-            )
-        except (TypeError, ValueError):
-            continue
-
-    if not valid_probabilities:
-        return "N/A"
-
-    percentage = (
-        max(valid_probabilities)
-        * 100
-    )
-
-    return f"{percentage:.2f}%"
-
-
 def _format_prediction_date(
     prediction: Prediction,
 ) -> str:
@@ -229,7 +160,7 @@ def _format_prediction_date(
         "strftime",
     ):
         return prediction_date.strftime(
-            "%d %B %Y, %I:%M %p"
+            "%d %B %Y"
         )
 
     return str(prediction_date)
@@ -275,12 +206,6 @@ def _build_risk_alert_email(
     risk_level = (
         prediction.risk_level
         or "Not Available"
-    )
-
-    confidence = (
-        _get_prediction_confidence(
-            prediction
-        )
     )
 
     prediction_date = (
@@ -362,9 +287,6 @@ def _build_risk_alert_email(
         risk_level
     )
 
-    safe_confidence = escape(
-        confidence
-    )
 
     safe_prediction_date = escape(
         prediction_date
@@ -544,24 +466,6 @@ def _build_risk_alert_email(
                                         </td>
                                     </tr>
 
-                                    <tr>
-                                        <td style="
-                                            padding: 12px 16px;
-                                            color: #64748b;
-                                            border-top:
-                                                1px solid #e2e8f0;
-                                        ">
-                                            Confidence
-                                        </td>
-
-                                        <td style="
-                                            padding: 12px 16px;
-                                            border-top:
-                                                1px solid #e2e8f0;
-                                        ">
-                                            {safe_confidence}
-                                        </td>
-                                    </tr>
 
                                     <tr>
                                         <td style="
@@ -697,7 +601,6 @@ def _build_risk_alert_email(
 Student: {student_name}
 Roll Number: {roll_number}
 Risk Level: {risk_level}
-Prediction Confidence: {confidence}
 Prediction Date: {prediction_date}
 
 Recommended Action:
