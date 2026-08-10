@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database.connection import SessionLocal
 from app.models.user import User
 from app.auth.jwt_handler import verify_token
+from app.services.token_blacklist_service import is_token_blacklisted
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/auth/login"
@@ -23,6 +24,15 @@ def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
+    if is_token_blacklisted(
+        db=db,
+        token=token,
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Token has been invalidated. Please login again.",
+        )
+
     payload = verify_token(token)
 
     if payload is None:
@@ -44,6 +54,7 @@ def get_current_user(
         )
 
     return user
+
 
 def require_admin(
     current_user: User = Depends(get_current_user),
