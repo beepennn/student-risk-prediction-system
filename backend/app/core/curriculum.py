@@ -39,6 +39,8 @@ DEPARTMENT_ALIASES = {
 
     "electronics engineering":
         BEI,
+
+    "computer science": COMPUTER_ENGINEERING,
 }
 
 
