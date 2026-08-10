@@ -32,3 +32,22 @@ def is_token_blacklisted(
         .first()
         is not None
     )
+
+
+def cleanup_expired_tokens(
+    db: Session,
+):
+    expired_tokens = (
+        db.query(TokenBlacklist)
+        .filter(
+            TokenBlacklist.expires_at < datetime.utcnow()
+        )
+        .all()
+    )
+
+    for token in expired_tokens:
+        db.delete(token)
+
+    db.commit()
+
+    return len(expired_tokens)

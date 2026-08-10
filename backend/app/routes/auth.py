@@ -7,7 +7,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app.database.connection import SessionLocal
 from app.schemas.auth import TokenResponse
 from app.services.auth_service import login_user
-from app.services.token_blacklist_service import blacklist_token
+from app.services.token_blacklist_service import (
+    blacklist_token,
+    cleanup_expired_tokens,
+)
 
 from app.core.dependencies import get_current_user
 from app.models.user import User
@@ -116,12 +119,36 @@ def logout(
 ):
     token = authorization.replace("Bearer ", "")
 
+    payload = verify_token(token)
+
+    if payload is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token",
+        )
+
+    expires_at = datetime.utcfromtimestamp(
+        payload["exp"]
+    )
+
     blacklist_token(
         db=db,
         token=token,
-        expires_at=datetime.utcnow(),
+        expires_at=expires_at,
     )
 
     return {
         "message": "Logged out successfully"
+    }
+
+
+@router.post("/cleanup-blacklist")
+def cleanup_blacklist(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    deleted_count = cleanup_expired_tokens(db)
+
+    return {
+        "message": f"{deleted_count} expired tokens removed"
     }
