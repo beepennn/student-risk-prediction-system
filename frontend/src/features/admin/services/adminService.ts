@@ -1,11 +1,11 @@
 import api from "../../../config/api";
 
-import type { AdminDashboardResponse } from "../types/dashboard";
+import type { DashboardResponse } from "../types/dashboard";
 
 export async function getAdminDashboard(
   token: string
-): Promise<AdminDashboardResponse> {
-  const response = await api.get<AdminDashboardResponse>(
+): Promise<DashboardResponse> {
+  const response = await api.get<DashboardResponse>(
     "/admin/dashboard",
     {
       headers: {

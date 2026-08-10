@@ -101,7 +101,6 @@ NUMERIC_FEATURES = [
 
 CATEGORICAL_FEATURES = [
     "semester",
-    "gender",
 ]
 
 EXPECTED_CLASSES = [
