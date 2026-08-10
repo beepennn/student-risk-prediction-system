@@ -57,13 +57,11 @@ const emptyForm: AcademicRecordFormState = {
 function AdminAcademicRecordsPage() {
   const { token } = useAuth();
 
-  const [records, setRecords] = useState<
-    AcademicRecord[]
-  >([]);
+  const [records, setRecords] =
+    useState<AcademicRecord[]>([]);
 
-  const [students, setStudents] = useState<
-    AdminStudent[]
-  >([]);
+  const [students, setStudents] =
+    useState<AdminStudent[]>([]);
 
   const [editingRecord, setEditingRecord] =
     useState<AcademicRecord | null>(null);
@@ -92,26 +90,32 @@ function AdminAcademicRecordsPage() {
   const [modalError, setModalError] =
     useState("");
 
-  const [successMessage, setSuccessMessage] =
-    useState("");
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] = useState("");
 
-  const [isModalOpen, setIsModalOpen] =
-    useState(false);
+  const [
+    isModalOpen,
+    setIsModalOpen,
+  ] = useState(false);
 
   const [form, setForm] =
     useState<AcademicRecordFormState>(
       emptyForm,
     );
 
-  const [formErrors, setFormErrors] =
-    useState<
-      Partial<
-        Record<
-          keyof AcademicRecordFormState,
-          string
-        >
+  const [
+    formErrors,
+    setFormErrors,
+  ] = useState<
+    Partial<
+      Record<
+        keyof AcademicRecordFormState,
+        string
       >
-    >({});
+    >
+  >({});
 
 
   /*
@@ -155,8 +159,8 @@ function AdminAcademicRecordsPage() {
               firstRecord,
               secondRecord,
             ) =>
-              secondRecord.id
-              - firstRecord.id,
+              secondRecord.id -
+              firstRecord.id,
           ),
         );
 
@@ -181,17 +185,12 @@ function AdminAcademicRecordsPage() {
 
 
   /*
-   * Initial loading.
+   * Initial page load.
    *
-   * IMPORTANT:
-   * We do not call fetchData()
-   * directly from this effect because
-   * fetchData immediately calls setState,
-   * which triggers the React lint rule
-   * shown in your screenshot.
-   *
-   * All state changes here occur after
-   * the asynchronous request finishes.
+   * We make the async request directly
+   * inside the effect instead of calling
+   * fetchData(), avoiding the
+   * set-state-in-effect lint error.
    */
   useEffect(() => {
     if (!token) {
@@ -202,14 +201,15 @@ function AdminAcademicRecordsPage() {
 
     async function loadInitialData() {
       try {
+        const currentToken = token as string;
         const [
           academicRecords,
           studentRecords,
         ] = await Promise.all([
-          getAcademicRecords(token),
+          getAcademicRecords(currentToken),
 
           getAdminStudents(
-            token,
+            currentToken,
             {
               skip: 0,
               limit: 1000,
@@ -227,8 +227,8 @@ function AdminAcademicRecordsPage() {
               firstRecord,
               secondRecord,
             ) =>
-              secondRecord.id
-              - firstRecord.id,
+              secondRecord.id -
+              firstRecord.id,
           ),
         );
 
@@ -295,51 +295,51 @@ function AdminAcademicRecordsPage() {
             );
 
           const matchesSearch =
-            !normalisedSearch
-            || student?.full_name
+            !normalisedSearch ||
+            student?.full_name
               .toLowerCase()
               .includes(
                 normalisedSearch,
-              )
-            || student?.email
+              ) ||
+            student?.email
               .toLowerCase()
               .includes(
                 normalisedSearch,
-              )
-            || student?.roll_number
+              ) ||
+            student?.roll_number
               .toLowerCase()
               .includes(
                 normalisedSearch,
-              )
-            || student?.department
+              ) ||
+            student?.department
               .toLowerCase()
               .includes(
                 normalisedSearch,
-              )
-            || String(
+              ) ||
+            String(
               record.student_id,
             ).includes(
               normalisedSearch,
             );
 
           const matchesSemester =
-            !semesterFilter
-            || record.semester
-              === Number(
+            !semesterFilter ||
+            record.semester ===
+              Number(
                 semesterFilter,
               );
 
           const matchesGender =
-            !genderFilter
-            || record.gender
-              .toLowerCase()
-              === genderFilter
+            !genderFilter ||
+            record.gender
+              .toLowerCase() ===
+              genderFilter
                 .toLowerCase();
 
           return (
-            matchesSearch
-            && matchesSemester
-            && matchesGender
+            matchesSearch &&
+            matchesSemester &&
+            matchesGender
           );
         },
       );
@@ -356,20 +356,15 @@ function AdminAcademicRecordsPage() {
     Math.max(
       1,
       Math.ceil(
-        filteredRecords.length
-        / PAGE_SIZE,
+        filteredRecords.length /
+          PAGE_SIZE,
       ),
     );
 
 
   /*
-   * Instead of using an effect with:
-   *
-   * setPage(totalPages)
-   *
-   * we derive a safe page.
-   * This removes the second React
-   * lint error from your screenshot.
+   * Avoids using setPage()
+   * inside an effect.
    */
   const safePage =
     Math.min(
@@ -381,13 +376,13 @@ function AdminAcademicRecordsPage() {
   const paginatedRecords =
     useMemo(() => {
       const startIndex =
-        (safePage - 1)
-        * PAGE_SIZE;
+        (safePage - 1) *
+        PAGE_SIZE;
 
       return filteredRecords.slice(
         startIndex,
-        startIndex
-          + PAGE_SIZE,
+        startIndex +
+          PAGE_SIZE,
       );
     }, [
       filteredRecords,
@@ -403,7 +398,9 @@ function AdminAcademicRecordsPage() {
     });
 
     setFormErrors({});
+
     setModalError("");
+
     setIsModalOpen(true);
   }
 
@@ -442,8 +439,7 @@ function AdminAcademicRecordsPage() {
         ),
 
       previousGpa:
-        record.previous_gpa
-          === null
+        record.previous_gpa === null
           ? ""
           : String(
               record.previous_gpa,
@@ -459,7 +455,9 @@ function AdminAcademicRecordsPage() {
     });
 
     setFormErrors({});
+
     setModalError("");
+
     setIsModalOpen(true);
   }
 
@@ -501,8 +499,8 @@ function AdminAcademicRecordsPage() {
          * previous-semester GPA.
          */
         if (
-          field === "semester"
-          && value === "1"
+          field === "semester" &&
+          value === "1"
         ) {
           updatedForm.previousGpa =
             "";
@@ -521,8 +519,8 @@ function AdminAcademicRecordsPage() {
         };
 
         if (
-          field === "semester"
-          && value === "1"
+          field === "semester" &&
+          value === "1"
         ) {
           updatedErrors.previousGpa =
             undefined;
@@ -586,7 +584,7 @@ function AdminAcademicRecordsPage() {
 
 
     /*
-     * Semester validation
+     * Semester + Previous GPA
      */
     if (!form.semester) {
       errors.semester =
@@ -600,19 +598,15 @@ function AdminAcademicRecordsPage() {
       if (
         !Number.isInteger(
           semester,
-        )
-        || semester < 1
-        || semester > 8
+        ) ||
+        semester < 1 ||
+        semester > 8
       ) {
         errors.semester =
           "Semester must be between 1 and 8.";
       } else if (
         semester > 1
       ) {
-        /*
-         * GPA required only from
-         * Semester 2 onward.
-         */
         if (
           !form.previousGpa.trim()
         ) {
@@ -627,9 +621,9 @@ function AdminAcademicRecordsPage() {
           if (
             Number.isNaN(
               previousGpa,
-            )
-            || previousGpa < 0
-            || previousGpa > 4
+            ) ||
+            previousGpa < 0 ||
+            previousGpa > 4
           ) {
             errors.previousGpa =
               "Previous GPA must be between 0 and 4.";
@@ -683,7 +677,9 @@ function AdminAcademicRecordsPage() {
       setSubmitting(true);
 
       setModalError("");
+
       setError("");
+
       setSuccessMessage("");
 
 
@@ -721,11 +717,9 @@ function AdminAcademicRecordsPage() {
             ),
 
           /*
-           * Semester 1 sends null.
-           *
-           * Do NOT convert empty string
-           * with Number("") because that
-           * would become 0.
+           * Semester 1 sends NULL.
+           * Never convert an empty GPA
+           * to zero.
            */
           previous_gpa:
             semester === 1
@@ -796,17 +790,24 @@ function AdminAcademicRecordsPage() {
 
   function resetFilters() {
     setSearchInput("");
+
     setSemesterFilter("");
+
     setGenderFilter("");
+
     setPage(1);
   }
 
 
   return (
     <div className="space-y-6">
+
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+
         <div>
+
           <div className="flex items-center gap-3">
+
             <FiBookOpen
               size={30}
               className="text-blue-600"
@@ -815,13 +816,16 @@ function AdminAcademicRecordsPage() {
             <h1 className="text-3xl font-bold text-gray-900">
               Academic Records
             </h1>
+
           </div>
+
 
           <p className="mt-2 text-gray-500">
             Add and correct student
             attendance, marks, GPA and
             semester performance.
           </p>
+
         </div>
 
 
@@ -832,10 +836,13 @@ function AdminAcademicRecordsPage() {
           }
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700"
         >
+
           <FiPlus />
 
           Add Academic Record
+
         </button>
+
       </header>
 
 
@@ -864,10 +871,13 @@ function AdminAcademicRecordsPage() {
 
 
       <section className="rounded-xl bg-white p-5 shadow-sm">
+
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
 
           <div className="relative">
+
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+
 
             <input
               type="search"
@@ -886,6 +896,7 @@ function AdminAcademicRecordsPage() {
               placeholder="Search by student..."
               className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
+
           </div>
 
 
@@ -908,6 +919,7 @@ function AdminAcademicRecordsPage() {
               )
             }
           >
+
             <option value="">
               All semesters
             </option>
@@ -933,6 +945,7 @@ function AdminAcademicRecordsPage() {
                 </option>
               ),
             )}
+
           </select>
 
 
@@ -955,6 +968,7 @@ function AdminAcademicRecordsPage() {
               )
             }
           >
+
             <option value="">
               All genders
             </option>
@@ -970,10 +984,12 @@ function AdminAcademicRecordsPage() {
             <option value="Other">
               Other
             </option>
+
           </select>
 
 
           <div className="flex gap-3">
+
             <button
               type="button"
               onClick={() =>
@@ -984,6 +1000,7 @@ function AdminAcademicRecordsPage() {
               }
               className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
+
               <FiRefreshCw
                 className={
                   loading
@@ -993,6 +1010,7 @@ function AdminAcademicRecordsPage() {
               />
 
               Refresh
+
             </button>
 
 
@@ -1005,8 +1023,11 @@ function AdminAcademicRecordsPage() {
             >
               Clear
             </button>
+
           </div>
+
         </div>
+
       </section>
 
 
@@ -1014,8 +1035,8 @@ function AdminAcademicRecordsPage() {
 
         {loading ? (
           <LoadingState />
-        ) : filteredRecords.length
-          === 0 ? (
+        ) : filteredRecords.length ===
+          0 ? (
           <EmptyState
             onAdd={
               openCreateModal
@@ -1027,6 +1048,7 @@ function AdminAcademicRecordsPage() {
             <table className="min-w-full divide-y divide-gray-200">
 
               <thead className="bg-gray-50">
+
                 <tr>
 
                   <TableHeader>
@@ -1066,6 +1088,7 @@ function AdminAcademicRecordsPage() {
                   </TableHeader>
 
                 </tr>
+
               </thead>
 
 
@@ -1073,6 +1096,7 @@ function AdminAcademicRecordsPage() {
 
                 {paginatedRecords.map(
                   (record) => {
+
                     const student =
                       studentsById.get(
                         record.student_id,
@@ -1087,27 +1111,34 @@ function AdminAcademicRecordsPage() {
                       >
 
                         <TableCell>
+
                           <div>
+
                             <p className="font-medium text-gray-900">
-                              {student?.full_name
-                                ?? `Student #${record.student_id}`}
+                              {student?.full_name ??
+                                `Student #${record.student_id}`}
                             </p>
 
+
                             <p className="mt-1 text-xs text-gray-500">
-                              {student?.roll_number
-                                ?? "Student information unavailable"}
+                              {student?.roll_number ??
+                                "Student information unavailable"}
                             </p>
+
                           </div>
+
                         </TableCell>
 
 
                         <TableCell>
+
                           <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
                             Semester{" "}
                             {
                               record.semester
                             }
                           </span>
+
                         </TableCell>
 
 
@@ -1141,8 +1172,9 @@ function AdminAcademicRecordsPage() {
 
 
                         <TableCell>
-                          {record.previous_gpa
-                          === null ? (
+
+                          {record.previous_gpa ===
+                          null ? (
                             <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-600">
                               N/A
                             </span>
@@ -1155,6 +1187,7 @@ function AdminAcademicRecordsPage() {
                               )}
                             </span>
                           )}
+
                         </TableCell>
 
 
@@ -1166,6 +1199,7 @@ function AdminAcademicRecordsPage() {
 
 
                         <TableCell align="right">
+
                           <button
                             type="button"
                             onClick={() =>
@@ -1177,8 +1211,11 @@ function AdminAcademicRecordsPage() {
                             title="Edit academic record"
                             aria-label="Edit academic record"
                           >
+
                             <FiEdit2 />
+
                           </button>
+
                         </TableCell>
 
                       </tr>
@@ -1187,7 +1224,9 @@ function AdminAcademicRecordsPage() {
                 )}
 
               </tbody>
+
             </table>
+
           </div>
         )}
 
@@ -1244,6 +1283,7 @@ function AdminAcademicRecordsPage() {
           }
         />
       )}
+
     </div>
   );
 }
@@ -1307,9 +1347,6 @@ function AcademicRecordModal({
   const isFirstSemester =
     form.semester === "1";
 
-  const hasSelectedSemester =
-    form.semester !== "";
-
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -1319,6 +1356,7 @@ function AcademicRecordModal({
         <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-white px-6 py-5">
 
           <div>
+
             <h2 className="text-xl font-semibold text-gray-900">
               {editingRecord
                 ? "Edit Academic Record"
@@ -1330,6 +1368,7 @@ function AcademicRecordModal({
                 ? "Correct the student's academic information."
                 : "Enter the student's academic performance information."}
             </p>
+
           </div>
 
 
@@ -1344,9 +1383,11 @@ function AcademicRecordModal({
             className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
             aria-label="Close modal"
           >
+
             <FiX
               size={21}
             />
+
           </button>
 
         </div>
@@ -1375,6 +1416,7 @@ function AcademicRecordModal({
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
 
             <div className="md:col-span-2">
+
               <FormField
                 label="Student"
                 required
@@ -1382,6 +1424,7 @@ function AcademicRecordModal({
                   formErrors.studentId
                 }
               >
+
                 <select
                   value={
                     form.studentId
@@ -1405,9 +1448,11 @@ function AcademicRecordModal({
                     )
                   }
                 >
+
                   <option value="">
                     Select student
                   </option>
+
 
                   {students.map(
                     (
@@ -1435,8 +1480,11 @@ function AcademicRecordModal({
                       </option>
                     ),
                   )}
+
                 </select>
+
               </FormField>
+
             </div>
 
 
@@ -1447,6 +1495,7 @@ function AcademicRecordModal({
                 formErrors.semester
               }
             >
+
               <select
                 value={
                   form.semester
@@ -1470,9 +1519,11 @@ function AcademicRecordModal({
                   )
                 }
               >
+
                 <option value="">
                   Select semester
                 </option>
+
 
                 {Array.from(
                   {
@@ -1495,7 +1546,9 @@ function AcademicRecordModal({
                     </option>
                   ),
                 )}
+
               </select>
+
             </FormField>
 
 
@@ -1506,6 +1559,7 @@ function AcademicRecordModal({
                 formErrors.gender
               }
             >
+
               <select
                 value={
                   form.gender
@@ -1529,6 +1583,7 @@ function AcademicRecordModal({
                   )
                 }
               >
+
                 <option value="">
                   Select gender
                 </option>
@@ -1544,7 +1599,9 @@ function AcademicRecordModal({
                 <option value="Other">
                   Other
                 </option>
+
               </select>
+
             </FormField>
 
 
@@ -1636,66 +1693,51 @@ function AcademicRecordModal({
             />
 
 
-            <FormField
-              label="Previous GPA"
-              required={
-                hasSelectedSemester
-                && !isFirstSemester
-              }
-              error={
-                formErrors.previousGpa
-              }
-            >
+            {/*
+              Semester 1 has no previous
+              semester, so the entire field
+              is hidden.
+            */}
+            {!isFirstSemester && (
+              <FormField
+                label="Previous GPA"
+                required
+                error={
+                  formErrors.previousGpa
+                }
+              >
 
-              <input
-                type="number"
-                min="0"
-                max="4"
-                step="0.01"
-                value={
-                  isFirstSemester
-                    ? ""
-                    : form.previousGpa
-                }
-                onChange={(
-                  event,
-                ) =>
-                  onFieldChange(
-                    "previousGpa",
-                    event.target.value,
-                  )
-                }
-                placeholder={
-                  isFirstSemester
-                    ? "Not applicable for Semester 1"
-                    : "Example: 3.25"
-                }
-                disabled={
-                  submitting
-                  || isFirstSemester
-                }
-                className={
-                  getInputClass(
-                    Boolean(
-                      formErrors.previousGpa,
-                    ),
-                  )
-                }
-              />
+                <input
+                  type="number"
+                  min="0"
+                  max="4"
+                  step="0.01"
+                  value={
+                    form.previousGpa
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    onFieldChange(
+                      "previousGpa",
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Example: 3.25"
+                  disabled={
+                    submitting
+                  }
+                  className={
+                    getInputClass(
+                      Boolean(
+                        formErrors.previousGpa,
+                      ),
+                    )
+                  }
+                />
 
-
-              {isFirstSemester && (
-                <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
-                  Previous GPA is not
-                  applicable for
-                  first-semester students
-                  because they do not
-                  have a previous-semester
-                  academic result.
-                </div>
-              )}
-
-            </FormField>
+              </FormField>
+            )}
 
           </div>
 
@@ -1727,6 +1769,7 @@ function AcademicRecordModal({
               {submitting && (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-white" />
               )}
+
 
               {submitting
                 ? "Saving..."
@@ -1761,12 +1804,14 @@ function ScoreInput({
     (value: string) => void;
   submitting: boolean;
 }) {
+
   return (
     <FormField
       label={label}
       required
       error={error}
     >
+
       <input
         type="number"
         min="0"
@@ -1792,6 +1837,7 @@ function ScoreInput({
           )
         }
       />
+
     </FormField>
   );
 }
@@ -1808,20 +1854,26 @@ function FormField({
   error?: string;
   children: ReactNode;
 }) {
+
   return (
     <label className="block">
 
       <span className="mb-2 block text-sm font-medium text-gray-700">
+
         {label}
+
 
         {required && (
           <span className="ml-1 text-red-500">
             *
           </span>
         )}
+
       </span>
 
+
       {children}
+
 
       {error && (
         <span className="mt-1 block text-sm text-red-600">
@@ -1843,6 +1895,7 @@ function TableHeader({
     | "left"
     | "right";
 }) {
+
   return (
     <th
       className={`whitespace-nowrap px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 ${
@@ -1866,6 +1919,7 @@ function TableCell({
     | "left"
     | "right";
 }) {
+
   return (
     <td
       className={`whitespace-nowrap px-5 py-4 text-sm text-gray-700 ${
@@ -1898,13 +1952,16 @@ function AlertMessage({
       ? "border-green-200 bg-green-50 text-green-700"
       : "border-red-200 bg-red-50 text-red-700";
 
+
   return (
     <div
       className={`flex items-start justify-between gap-4 rounded-lg border px-4 py-3 ${classes}`}
     >
+
       <p>
         {message}
       </p>
+
 
       <button
         type="button"
@@ -1915,16 +1972,19 @@ function AlertMessage({
       >
         <FiX />
       </button>
+
     </div>
   );
 }
 
 
 function LoadingState() {
+
   return (
     <div className="p-12 text-center">
 
       <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
+
 
       <p className="mt-4 text-gray-500">
         Loading academic records...
@@ -1941,6 +2001,7 @@ function EmptyState({
   onAdd:
     () => void;
 }) {
+
   return (
     <div className="p-12 text-center">
 
@@ -1949,13 +2010,16 @@ function EmptyState({
         className="mx-auto text-gray-300"
       />
 
+
       <p className="mt-4 font-medium text-gray-700">
         No academic records found
       </p>
 
+
       <p className="mt-1 text-sm text-gray-500">
         Add the first academic record.
       </p>
+
 
       <button
         type="button"
@@ -1964,9 +2028,11 @@ function EmptyState({
         }
         className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white"
       >
+
         <FiPlus />
 
         Add Academic Record
+
       </button>
 
     </div>
@@ -1988,8 +2054,9 @@ function Pagination({
   onPageChange:
     (page: number) => void;
 }) {
+
   return (
-    <div className="flex flex-col gap-3 border-t border-gray-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex items-center justify-between border-t border-gray-200 px-5 py-4">
 
       <p className="text-sm text-gray-500">
         Page {page} of{" "}
@@ -2006,8 +2073,8 @@ function Pagination({
         <button
           type="button"
           disabled={
-            page === 1
-            || loading
+            page === 1 ||
+            loading
           }
           onClick={() =>
             onPageChange(
@@ -2019,18 +2086,20 @@ function Pagination({
           }
           className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm disabled:opacity-50"
         >
+
           <FiChevronLeft />
 
           Previous
+
         </button>
 
 
         <button
           type="button"
           disabled={
-            page
-              >= totalPages
-            || loading
+            page >=
+              totalPages ||
+            loading
           }
           onClick={() =>
             onPageChange(
@@ -2042,9 +2111,11 @@ function Pagination({
           }
           className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm disabled:opacity-50"
         >
+
           Next
 
           <FiChevronRight />
+
         </button>
 
       </div>
@@ -2088,9 +2159,9 @@ function validatePercentage(
   if (
     Number.isNaN(
       numericValue,
-    )
-    || numericValue < 0
-    || numericValue > 100
+    ) ||
+    numericValue < 0 ||
+    numericValue > 100
   ) {
     errors[field] =
       `${label} must be between 0 and 100.`;
@@ -2101,6 +2172,7 @@ function validatePercentage(
 function getInputClass(
   hasError: boolean,
 ): string {
+
   return [
     "w-full rounded-lg border bg-white px-4 py-2.5 text-gray-900 outline-none transition disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500",
 
@@ -2115,6 +2187,7 @@ function formatScore(
   value: number,
   suffix = "",
 ): string {
+
   return `${
     Number(
       value,
@@ -2135,6 +2208,7 @@ function getErrorMessage(
       error,
     )
   ) {
+
     const detail =
       error.response
         ?.data
@@ -2142,8 +2216,8 @@ function getErrorMessage(
 
 
     if (
-      typeof detail
-      === "string"
+      typeof detail ===
+      "string"
     ) {
       return detail;
     }
@@ -2154,21 +2228,22 @@ function getErrorMessage(
         detail,
       )
     ) {
+
       return detail
         .map(
           (item) => {
 
             if (
-              typeof item
-                === "object"
-              && item
-                !== null
-              && "msg" in item
-              && typeof item.msg
-                === "string"
+              typeof item ===
+                "object" &&
+              item !== null &&
+              "msg" in item &&
+              typeof item.msg ===
+                "string"
             ) {
               return item.msg;
             }
+
 
             return (
               "Validation error"
@@ -2181,8 +2256,7 @@ function getErrorMessage(
 
     if (
       error.response
-        ?.status
-      === 400
+        ?.status === 400
     ) {
       return (
         "Another academic record already "
@@ -2193,8 +2267,7 @@ function getErrorMessage(
 
     if (
       error.response
-        ?.status
-      === 401
+        ?.status === 401
     ) {
       return (
         "Your session has expired."
@@ -2204,8 +2277,7 @@ function getErrorMessage(
 
     if (
       error.response
-        ?.status
-      === 403
+        ?.status === 403
     ) {
       return (
         "You do not have permission "
@@ -2216,8 +2288,7 @@ function getErrorMessage(
 
     if (
       error.response
-        ?.status
-      === 404
+        ?.status === 404
     ) {
       return (
         "The academic record or "
@@ -2228,8 +2299,7 @@ function getErrorMessage(
 
     if (
       error.response
-        ?.status
-      === 422
+        ?.status === 422
     ) {
       return (
         "Please check all entered "
