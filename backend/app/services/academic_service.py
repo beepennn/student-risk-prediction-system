@@ -19,6 +19,11 @@ from app.models.subject_academic_record import (
     SubjectAcademicRecord,
 )
 
+from app.models.academic_record import (
+    AcademicRecord,
+)
+from app.models.student import Student
+
 from app.schemas.academic_record import (
     AcademicRecordCreate,
 )
@@ -65,6 +70,7 @@ def get_academic_record(
             detail=(
                 "Academic record "
                 "not found."
+                "Academic record not found."
             ),
         )
 
@@ -99,6 +105,7 @@ def _get_student_or_404(
         .filter(
             Student.id
             == student_id
+            == academic_record.student_id
         )
         .first()
     )
@@ -542,6 +549,34 @@ def create_academic_record(
         ),
     )
 
+    academic_data = (
+        academic_record.model_dump()
+    )
+
+    # Safety rule:
+    # Semester 1 must never store a fake
+    # previous GPA such as 0.
+    if (
+        academic_record.semester
+        == 1
+    ):
+        academic_data[
+            "previous_gpa"
+        ] = None
+
+    db_record = AcademicRecord(
+        **academic_data
+    )
+
+    db.add(
+        db_record
+    )
+
+    db.commit()
+
+    db.refresh(
+        db_record
+    )
 
     try:
         db.add(
@@ -610,6 +645,7 @@ def update_academic_record(
             detail=(
                 "Academic record "
                 "not found."
+                "Academic record not found."
             ),
         )
 
@@ -618,6 +654,10 @@ def update_academic_record(
         _get_student_or_404(
             db,
             academic_record.student_id,
+        db.query(Student)
+        .filter(
+            Student.id
+            == academic_record.student_id
         )
     )
 
@@ -730,6 +770,33 @@ def update_academic_record(
         db.rollback()
         raise
 
+    updated_data = (
+        academic_record.model_dump()
+    )
+
+    if (
+        academic_record.semester
+        == 1
+    ):
+        updated_data[
+            "previous_gpa"
+        ] = None
+
+    for (
+        field,
+        value,
+    ) in updated_data.items():
+        setattr(
+            db_record,
+            field,
+            value,
+        )
+
+    db.commit()
+
+    db.refresh(
+        db_record
+    )
 
     return get_academic_record(
         db,
@@ -767,6 +834,7 @@ def get_latest_academic_record(
             detail=(
                 "Academic record "
                 "not found."
+                "Academic record not found."
             ),
         )
 

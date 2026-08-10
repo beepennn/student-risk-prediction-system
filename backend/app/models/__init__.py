@@ -10,3 +10,5 @@ from .audit_log import AuditLog
 from app.models.subject_academic_record import (
     SubjectAcademicRecord,
 )
+from app.models.token_blacklist import TokenBlacklist
+from .audit_log import AuditLog
