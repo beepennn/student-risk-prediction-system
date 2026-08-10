@@ -7,3 +7,6 @@ from .recommendation import Recommendation
 from .notification import Notification
 from .intervention import Intervention
 from .audit_log import AuditLog
+from app.models.subject_academic_record import (
+    SubjectAcademicRecord,
+)
