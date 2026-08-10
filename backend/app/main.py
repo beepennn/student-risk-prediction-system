@@ -1,8 +1,9 @@
 from fastapi import FastAPI
-
+ 
 from app.database.connection import engine
 from app.database.base import Base
 
+import app.models.token_blacklist
 import app.models.user
 import app.models.student
 import app.models.academic_record

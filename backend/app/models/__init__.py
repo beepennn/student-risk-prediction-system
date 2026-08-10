@@ -6,3 +6,4 @@ from .shap_explanation import SHAPExplanation
 from .recommendation import Recommendation
 from .notification import Notification
 from .intervention import Intervention
+from app.models.token_blacklist import TokenBlacklist

@@ -1,10 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.database.connection import SessionLocal
 from app.schemas.auth import TokenResponse
 from app.services.auth_service import login_user
+from app.services.token_blacklist_service import blacklist_token
+
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.auth.roles import require_admin
@@ -101,4 +105,23 @@ def admin_test(
         "message": "Admin access granted",
         "email": user.email,
         "role": user.role,
+    }
+
+
+@router.post("/logout")
+def logout(
+    authorization: str = Header(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    token = authorization.replace("Bearer ", "")
+
+    blacklist_token(
+        db=db,
+        token=token,
+        expires_at=datetime.utcnow(),
+    )
+
+    return {
+        "message": "Logged out successfully"
     }
