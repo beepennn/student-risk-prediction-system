@@ -9,6 +9,7 @@ class AcademicRecordCreate(BaseModel):
     quiz_score: float
     previous_gpa: float
     semester: int
+    gender: str
 
 
 class AcademicRecordResponse(AcademicRecordCreate):

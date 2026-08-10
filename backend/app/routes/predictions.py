@@ -1,24 +1,42 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 
 from app.database.connection import SessionLocal
+
 from app.schemas.prediction import (
     PredictionCreate,
     PredictionResponse,
 )
+
 from app.services.prediction_service import (
     get_predictions,
     get_prediction,
     create_prediction,
+    get_latest_prediction,
+    get_admin_predictions,
+    delete_prediction,
+    generate_prediction_for_student,
 )
-from app.services.ml_service import predict_student_risk
-from app.database.connection import SessionLocal
-from app.services.academic_service import get_latest_academic_record
-from app.services.prediction_service import save_prediction
-from app.services.recommendation_service import generate_recommendation
-from app.services.notification_service import generate_notification
 
-from app.core.dependencies import require_teacher
+from app.core.dependencies import (
+    require_teacher,
+    require_admin,
+    get_current_user,
+)
+
+from app.services.student_service import (
+    get_student_by_user_id,
+)
+
+from app.services.shap_service import (
+    get_shap_explanations,
+)
+
+from app.schemas.shap_explanation import (
+    SHAPExplanationResponse,
+)
+
 from app.models.user import User
 
 router = APIRouter(
@@ -35,72 +53,148 @@ def get_db():
         db.close()
 
 
-@router.get("/", response_model=list[PredictionResponse])
+@router.get(
+    "/",
+    response_model=list[PredictionResponse],
+)
 def read_predictions(
+    skip: int = 0,
+    limit: int = 20,
+    risk_level: str | None = None,
+    sort_order: str = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_predictions(db)
+    return get_predictions(
+        db=db,
+        skip=skip,
+        limit=limit,
+        risk_level=risk_level,
+        sort_order=sort_order,
+    )
 
 
-@router.get("/{prediction_id}", response_model=PredictionResponse)
+@router.get(
+    "/me",
+    response_model=PredictionResponse,
+)
+def get_my_prediction(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    student = get_student_by_user_id(
+        db,
+        current_user.id,
+    )
+
+    if student is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student profile not found.",
+        )
+
+    prediction = get_latest_prediction(
+        db,
+        student.id,
+    )
+
+    if prediction is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Prediction not found.",
+        )
+
+    return prediction
+
+
+@router.get("/admin")
+def admin_predictions(
+    risk_level: str | None = None,
+    semester: int | None = None,
+    department: str | None = None,
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return get_admin_predictions(
+        db=db,
+        risk_level=risk_level,
+        semester=semester,
+        department=department,
+        skip=skip,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/{prediction_id}",
+    response_model=PredictionResponse,
+)
 def read_prediction(
     prediction_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return get_prediction(db, prediction_id)
+    return get_prediction(
+        db,
+        prediction_id,
+    )
 
 
-@router.post("/", response_model=PredictionResponse)
+@router.post(
+    "/",
+    response_model=PredictionResponse,
+)
 def add_prediction(
     prediction: PredictionCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return create_prediction(db, prediction)
+    return create_prediction(
+        db,
+        prediction,
+    )
 
-@router.post("/generate/{student_id}")
+
+@router.delete("/{prediction_id}")
+def remove_prediction(
+    prediction_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    return delete_prediction(
+        db=db,
+        prediction_id=prediction_id,
+        admin_id=current_user.id,
+    )
+
+
+@router.post(
+    "/generate/{student_id}",
+    response_model=PredictionResponse,
+)
 def generate_prediction(
     student_id: int,
+    db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    db = SessionLocal()
+    return generate_prediction_for_student(
+        db=db,
+        student_id=student_id,
+        actor_id=current_user.id,
+    )
 
-    try:
-        academic = get_latest_academic_record(db, student_id)
-
-        if academic is None:
-            return {
-                "error": "No academic record found for this student."
-            }
-
-        student_features = {
-            "attendance": academic.attendance,
-            "internal_marks": academic.internal_marks,
-            "assignment_score": academic.assignment_score,
-            "quiz_score": academic.quiz_score,
-            "previous_gpa": academic.previous_gpa,
-        }
-
-        prediction = predict_student_risk(student_features)
-
-        saved_prediction = save_prediction(
-            db,
-            student_id,
-            prediction,
-        )
-        recommendation = generate_recommendation(
-            db,
-            saved_prediction,
-        )
-        generate_notification(
-            db,
-            student_id,
-            recommendation,
-        )
-
-        return saved_prediction
-
-    finally:
-        db.close()
+@router.get(
+    "/{prediction_id}/shap",
+    response_model=list[SHAPExplanationResponse],
+)
+def get_prediction_shap(
+    prediction_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_shap_explanations(
+        db=db,
+        prediction_id=prediction_id,
+    )

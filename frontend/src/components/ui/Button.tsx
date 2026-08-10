@@ -1,15 +1,36 @@
-import type { ButtonHTMLAttributes } from "react";
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
+import type {
+  ButtonHTMLAttributes,
+} from "react";
 
-function Button({ children, ...props }: ButtonProps) {
+import clsx from "clsx";
+
+
+type ButtonProps =
+  ButtonHTMLAttributes<HTMLButtonElement>;
+
+
+function Button({
+  children,
+  className,
+  type = "button",
+  ...props
+}: ButtonProps) {
   return (
     <button
+      type={type}
       {...props}
-      className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 transition"
+      className={clsx(
+        "inline-flex min-h-12 items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-[15px] font-semibold text-white transition",
+        "hover:bg-blue-700",
+        "focus:outline-none focus:ring-4 focus:ring-blue-200",
+        "disabled:cursor-not-allowed disabled:opacity-60",
+        className,
+      )}
     >
       {children}
     </button>
   );
 }
+
 
 export default Button;

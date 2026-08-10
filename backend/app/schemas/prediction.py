@@ -7,6 +7,8 @@ class PredictionCreate(BaseModel):
     low_probability: float
     medium_probability: float
     high_probability: float
+    confidence: float
+    confidence_percentage: float
 
 
 class PredictionResponse(PredictionCreate):

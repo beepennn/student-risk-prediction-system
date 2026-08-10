@@ -1,205 +1,283 @@
-import pandas as pd
 from pathlib import Path
 
+import pandas as pd
 
-def load_data():
-    """
-    Load raw student performance dataset.
-    """
-
-    data_path = Path("data/raw/student_performance.csv")
-
-    df = pd.read_csv(data_path)
-
-    return df
+from src.data.create_target import (
+    add_academic_risk_target,
+)
 
 
+ML_ROOT = (
+    Path(__file__)
+    .resolve()
+    .parents[2]
+)
 
-def create_academic_risk(df):
-    """
-    Create target variable from FinalGrade.
+INPUT_PATH = (
+    ML_ROOT
+    / "data"
+    / "raw"
+    / "student_performance_new_with_gpa_semester.csv"
+)
 
-    Mapping:
-    80-100  -> Low Risk
-    70-79   -> Medium Risk
-    Below 70 -> High Risk
-    """
+OUTPUT_PATH = (
+    ML_ROOT
+    / "data"
+    / "processed"
+    / "student_performance_processed.csv"
+)
 
-    def risk_category(grade):
-
-        if pd.isna(grade):
-            return None
-
-        elif grade >= 80:
-            return "Low Risk"
-
-        elif grade >= 70:
-            return "Medium Risk"
-
-        else:
-            return "High Risk"
-
-
-    df["AcademicRisk"] = df["FinalGrade"].apply(risk_category)
-
-    return df
+REPORT_PATH = (
+    ML_ROOT
+    / "reports"
+    / "preprocessing_report.md"
+)
 
 
-
-def clean_data(df):
-    """
-    Remove unnecessary columns
-    and fix invalid values.
-    """
-
-    # Remove identifier columns
-    df = df.drop(
-        columns=["StudentID", "Name"]
-    )
-
-    # Remove FinalGrade to avoid target leakage
-    df = df.drop(
-        columns=["FinalGrade"]
-    )
-
-    # Replace impossible negative study hours
-    df.loc[
-        df["Study Hours"] < 0,
-        "Study Hours"
-    ] = None
-
-    return df
+COLUMN_MAPPING = {
+    "Attendance (%)": "attendance",
+    "Internal_marks": "internal_marks",
+    "Assignments_Avg": "assignment_score",
+    "Quizzes_score": "quiz_score",
+    "Previous_gpa": "previous_gpa",
+    "Semester": "semester",
+    "Gender": "gender",
+}
 
 
-
-def handle_missing_values(df):
-    """
-    Handle missing values.
-
-    Numerical:
-    Median imputation
-
-    Categorical:
-    Mode imputation
-    """
-
-    numeric_columns = df.select_dtypes(
-        include=["number"]
-    ).columns
+SEMESTER_MAPPING = {
+    "I/I": 1,
+    "I/II": 2,
+    "II/I": 3,
+    "II/II": 4,
+    "III/I": 5,
+    "III/II": 6,
+    "IV/I": 7,
+    "IV/II": 8,
+}
 
 
-    categorical_columns = df.select_dtypes(
-        include=["object", "string"]
-    ).columns
+NUMERIC_FEATURES = [
+    "attendance",
+    "internal_marks",
+    "assignment_score",
+    "quiz_score",
+    "previous_gpa",
+    "semester",
+]
 
 
-    for column in numeric_columns:
-        df[column] = df[column].fillna(
-            df[column].median()
+ML_FEATURES = [
+    "attendance",
+    "internal_marks",
+    "assignment_score",
+    "quiz_score",
+    "previous_gpa",
+    "semester",
+    "gender",
+]
+
+
+def preprocess_dataset() -> pd.DataFrame:
+    print("Loading dataset:")
+    print(INPUT_PATH)
+
+    if not INPUT_PATH.exists():
+        raise FileNotFoundError(
+            f"Dataset not found: {INPUT_PATH}"
         )
 
+    dataframe = pd.read_csv(
+        INPUT_PATH
+    )
 
-    for column in categorical_columns:
-        df[column] = df[column].fillna(
-            df[column].mode()[0]
+    original_rows = len(dataframe)
+
+    dataframe = dataframe.rename(
+        columns=COLUMN_MAPPING
+    )
+
+    missing_columns = [
+        column
+        for column in ML_FEATURES
+        if column not in dataframe.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            "Missing required columns: "
+            f"{missing_columns}"
         )
 
-
-    return df
-
-
-
-def encode_features(X):
-    """
-    Encode only feature columns.
-    Target remains unchanged.
-    """
-
-    categorical_columns = X.select_dtypes(
-        include=["object", "string"]
-    ).columns
-
-
-    X = pd.get_dummies(
-        X,
-        columns=categorical_columns,
-        drop_first=True
+    dataframe["semester"] = (
+        dataframe["semester"].replace(
+            SEMESTER_MAPPING
+        )
     )
 
+    for column in NUMERIC_FEATURES:
+        dataframe[column] = pd.to_numeric(
+            dataframe[column],
+            errors="coerce",
+        )
 
-    return X
-
-
-
-def save_processed_data(X, y):
-    """
-    Save final processed dataset.
-    """
-
-    output_path = Path(
-        "data/processed/student_performance_processed.csv"
+    dataframe["gender"] = (
+        dataframe["gender"]
+        .astype("string")
+        .str.strip()
+        .str.title()
     )
 
-
-    processed_data = X.copy()
-
-    processed_data["AcademicRisk"] = y
-
-
-    processed_data.to_csv(
-        output_path,
-        index=False
+    dataframe = dataframe.dropna(
+        subset=ML_FEATURES
     )
 
+    dataframe["attendance"] = (
+        dataframe["attendance"].clip(
+            0,
+            100,
+        )
+    )
 
-    print("\n✅ Processed dataset saved successfully.")
+    dataframe["internal_marks"] = (
+        dataframe["internal_marks"].clip(
+            0,
+            100,
+        )
+    )
 
+    dataframe["assignment_score"] = (
+        dataframe["assignment_score"].clip(
+            0,
+            100,
+        )
+    )
+
+    dataframe["quiz_score"] = (
+        dataframe["quiz_score"].clip(
+            0,
+            100,
+        )
+    )
+
+    dataframe["previous_gpa"] = (
+        dataframe["previous_gpa"].clip(
+            0,
+            4,
+        )
+    )
+
+    dataframe = dataframe[
+        dataframe["semester"].between(
+            1,
+            8,
+        )
+    ].copy()
+
+    dataframe["semester"] = (
+        dataframe["semester"].astype(int)
+    )
+
+    dataframe = add_academic_risk_target(
+        dataframe
+    )
+
+    processed_dataframe = dataframe[
+        ML_FEATURES
+        + [
+            "performance_score",
+            "AcademicRisk",
+        ]
+    ].copy()
+
+    OUTPUT_PATH.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    REPORT_PATH.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    processed_dataframe.to_csv(
+        OUTPUT_PATH,
+        index=False,
+    )
+
+    final_rows = len(
+        processed_dataframe
+    )
+
+    risk_distribution = (
+        processed_dataframe[
+            "AcademicRisk"
+        ].value_counts()
+    )
+
+    report_content = f"""
+# Preprocessing Report
+
+## Input Dataset
+
+`{INPUT_PATH}`
+
+## Output Dataset
+
+`{OUTPUT_PATH}`
+
+## Rows
+
+- Original rows: {original_rows}
+- Final rows: {final_rows}
+- Removed rows: {original_rows - final_rows}
+
+## Performance Score Weights
+
+- Attendance: 25%
+- Internal marks: 20%
+- Assignment score: 15%
+- Quiz score: 15%
+- Previous GPA: 25%
+
+## Risk Classification
+
+- Score below 50: High Risk
+- Score from 50 to below 70: Medium Risk
+- Score 70 or above: Low Risk
+
+## Risk Distribution
+
+{risk_distribution.to_string()}
+
+## Missing Values
+
+{processed_dataframe.isnull().sum().to_string()}
+"""
+
+    REPORT_PATH.write_text(
+        report_content.strip(),
+        encoding="utf-8",
+    )
+
+    print(
+        "\nRisk distribution:"
+    )
+
+    print(risk_distribution)
+
+    print(
+        "\nProcessed dataset saved to:"
+    )
+
+    print(OUTPUT_PATH)
+
+    return processed_dataframe
 
 
 if __name__ == "__main__":
+    preprocess_dataset()
 
-    # Load dataset
-    df = load_data()
-
-
-    # Create target
-    df = create_academic_risk(df)
-
-
-    # Separate target and features
-    y = df["AcademicRisk"]
-
-    X = df.drop(
-        columns=["AcademicRisk"]
+    print(
+        "\nPreprocessing completed successfully."
     )
-
-
-    # Clean features
-    X = clean_data(X)
-
-
-    # Handle missing values
-    X = handle_missing_values(X)
-
-
-    # Encode categorical features
-    X = encode_features(X)
-
-
-    print("\n========== PROCESSED DATA INFORMATION ==========")
-    X.info()
-
-
-    print("\n========== TARGET DISTRIBUTION ==========")
-    print(y.value_counts())
-
-
-    print("\n========== MISSING VALUES ==========")
-    print(X.isnull().sum())
-
-
-    print("\n========== FIRST 5 ROWS ==========")
-    print(X.head())
-
-
-    save_processed_data(X, y)

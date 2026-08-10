@@ -20,6 +20,10 @@ class Prediction(Base):
 
     high_probability = Column(Float, nullable=False)
 
+    confidence = Column(Float, nullable=True)
+
+    confidence_percentage = Column(Float, nullable=True)
+
     prediction_date = Column(
         DateTime(timezone=True),
         server_default=func.now()

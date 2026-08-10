@@ -1,0 +1,10 @@
+gender,AcademicRisk,Count
+Female,High Risk,333
+Female,Low Risk,2130
+Female,Medium Risk,985
+Male,High Risk,334
+Male,Low Risk,2156
+Male,Medium Risk,1063
+Other,High Risk,333
+Other,Low Risk,333
+Other,Medium Risk,333

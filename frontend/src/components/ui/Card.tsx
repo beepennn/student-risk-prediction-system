@@ -1,15 +1,34 @@
-import type { ReactNode } from "react";
+import type {
+  HTMLAttributes,
+  ReactNode,
+} from "react";
 
-type CardProps = {
+import clsx from "clsx";
+
+
+interface CardProps
+  extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
-};
+}
 
-function Card({ children }: CardProps) {
+
+function Card({
+  children,
+  className,
+  ...props
+}: CardProps) {
   return (
-    <div className="rounded-xl bg-white p-6 shadow-md">
+    <div
+      {...props}
+      className={clsx(
+        "rounded-2xl border border-slate-200 bg-white p-6 shadow-sm",
+        className,
+      )}
+    >
       {children}
     </div>
   );
 }
+
 
 export default Card;

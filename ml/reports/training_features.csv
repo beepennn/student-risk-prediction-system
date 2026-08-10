@@ -1,0 +1,8 @@
+Feature,Type
+attendance,numeric
+internal_marks,numeric
+assignment_score,numeric
+quiz_score,numeric
+previous_gpa,numeric
+semester,categorical
+gender,categorical
