@@ -23,6 +23,8 @@ from sklearn.model_selection import (
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.impute import SimpleImputer
+
 
 from src.data.create_target import (
     calculate_performance_score,
@@ -383,6 +385,10 @@ def generate_balanced_synthetic_data(
     ):
         attempts += 1
 
+        semester = int(
+            rng.integers(1, 9)
+        )
+
         academic_profile: dict[
             str,
             object,
@@ -411,15 +417,22 @@ def generate_balanced_synthetic_data(
                 ),
                 2,
             ),
-            "previous_gpa": round(
-                float(
-                    rng.uniform(0, 4)
-                ),
-                2,
+
+            # Temporary neutral GPA used only
+            # while generating the synthetic
+            # target for Semester 1.
+            "previous_gpa": (
+                2.5
+                if semester == 1
+                else round(
+                    float(
+                        rng.uniform(0, 4)
+                    ),
+                    2,
+                )
             ),
-            "semester": int(
-                rng.integers(1, 9)
-            ),
+
+            "semester": semester,
         }
 
         performance_score = (
@@ -433,6 +446,17 @@ def generate_balanced_synthetic_data(
                 performance_score
             )
         )
+
+        # Semester 1 students genuinely have no
+        # previous-semester GPA.
+        #
+        # Keep it missing in the actual training
+        # features so the preprocessing pipeline
+        # learns how to handle this situation.
+        if semester == 1:
+            academic_profile[
+                "previous_gpa"
+            ] = np.nan
 
         if (
             risk_level
@@ -591,9 +615,15 @@ def validate_dataset(
         .str.title()
     )
 
+    required_numeric_features = [
+        feature
+        for feature in NUMERIC_FEATURES
+        if feature != "previous_gpa"
+    ]
+
     dataframe.dropna(
         subset=(
-            NUMERIC_FEATURES
+            required_numeric_features
             + [
                 "semester",
                 TARGET_COLUMN,
@@ -647,6 +677,33 @@ def validate_dataset(
         .clip(1, 8)
         .astype(int)
     )
+
+    # Semester 1 students have no
+    # previous-semester GPA.
+    dataframe.loc[
+        dataframe["semester"] == 1,
+        "previous_gpa",
+    ] = np.nan
+
+
+    # From Semester 2 onward, Previous GPA
+    # must genuinely exist.
+    invalid_previous_gpa = (
+        (dataframe["semester"] > 1)
+        & dataframe["previous_gpa"].isna()
+    )
+
+
+    if invalid_previous_gpa.any():
+        invalid_count = int(
+            invalid_previous_gpa.sum()
+        )
+
+        raise ValueError(
+            f"{invalid_count} records from "
+            "Semester 2 onward are missing "
+            "previous_gpa."
+        )
 
 
 # ============================================================
@@ -772,6 +829,18 @@ def create_fairness_weights(
 # ============================================================
 
 def create_preprocessor() -> ColumnTransformer:
+    numeric_pipeline = Pipeline(
+        steps=[
+            (
+                "imputer",
+                SimpleImputer(
+                    strategy="median",
+                    add_indicator=True,
+                ),
+            ),
+        ]
+    )
+
     return ColumnTransformer(
         transformers=[
             (
@@ -781,7 +850,7 @@ def create_preprocessor() -> ColumnTransformer:
             ),
             (
                 "numeric",
-                "passthrough",
+                numeric_pipeline,
                 NUMERIC_FEATURES,
             ),
         ],
