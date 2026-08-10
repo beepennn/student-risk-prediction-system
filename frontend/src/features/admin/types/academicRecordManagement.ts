@@ -5,7 +5,7 @@ export interface AcademicRecord {
   internal_marks: number;
   assignment_score: number;
   quiz_score: number;
-  previous_gpa: number;
+  previous_gpa: number | null;
   semester: number;
   gender: string;
 }
@@ -16,7 +16,7 @@ export interface CreateAcademicRecordPayload {
   internal_marks: number;
   assignment_score: number;
   quiz_score: number;
-  previous_gpa: number;
+  previous_gpa: number | null;
   semester: number;
   gender: string;
 }

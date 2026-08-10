@@ -102,7 +102,8 @@ def prepare_student_data(
     missing_features = [
         feature
         for feature in REQUIRED_FEATURES
-        if feature not in student_features
+        if feature
+        not in student_features
     ]
 
     if missing_features:
@@ -111,63 +112,147 @@ def prepare_student_data(
             f"{missing_features}"
         )
 
+
+    semester = int(
+        student_features[
+            "semester"
+        ]
+    )
+
+
+    if not 1 <= semester <= 8:
+        raise ValueError(
+            "semester must be between "
+            "1 and 8."
+        )
+
+
+    raw_previous_gpa = (
+        student_features[
+            "previous_gpa"
+        ]
+    )
+
+
+    # Semester 1 genuinely has no
+    # previous-semester GPA.
+    if semester == 1:
+        previous_gpa = np.nan
+
+    else:
+        if (
+            raw_previous_gpa is None
+            or pd.isna(
+                raw_previous_gpa
+            )
+        ):
+            raise ValueError(
+                "previous_gpa is required "
+                "for Semester 2 and above."
+            )
+
+        previous_gpa = float(
+            raw_previous_gpa
+        )
+
+        if not 0 <= previous_gpa <= 4:
+            raise ValueError(
+                "previous_gpa must be "
+                "between 0 and 4."
+            )
+
+
     prepared_data = {
         "attendance": float(
-            student_features["attendance"]
+            student_features[
+                "attendance"
+            ]
         ),
+
         "internal_marks": float(
             student_features[
                 "internal_marks"
             ]
         ),
+
         "assignment_score": float(
             student_features[
                 "assignment_score"
             ]
         ),
+
         "quiz_score": float(
-            student_features["quiz_score"]
+            student_features[
+                "quiz_score"
+            ]
         ),
-        "previous_gpa": float(
-            student_features["previous_gpa"]
-        ),
-        "semester": int(
-            student_features["semester"]
-        ),
+
+        "previous_gpa":
+            previous_gpa,
+
+        "semester":
+            semester,
+
         "gender": str(
-            student_features["gender"]
+            student_features[
+                "gender"
+            ]
         )
         .strip()
         .title(),
     }
 
+
     numeric_limits = {
-        "attendance": (0, 100),
-        "internal_marks": (0, 100),
-        "assignment_score": (0, 100),
-        "quiz_score": (0, 100),
-        "previous_gpa": (0, 4),
-        "semester": (1, 8),
+        "attendance": (
+            0,
+            100,
+        ),
+        "internal_marks": (
+            0,
+            100,
+        ),
+        "assignment_score": (
+            0,
+            100,
+        ),
+        "quiz_score": (
+            0,
+            100,
+        ),
     }
+
 
     for (
         feature,
         limits,
     ) in numeric_limits.items():
         value = float(
-            prepared_data[feature]
+            prepared_data[
+                feature
+            ]
         )
 
-        minimum, maximum = limits
+        minimum, maximum = (
+            limits
+        )
 
-        if not minimum <= value <= maximum:
+        if not (
+            minimum
+            <= value
+            <= maximum
+        ):
             raise ValueError(
-                f"{feature} must be between "
-                f"{minimum} and {maximum}."
+                f"{feature} must be "
+                f"between {minimum} "
+                f"and {maximum}."
             )
 
+
     return pd.DataFrame(
-        [prepared_data]
+        [
+            prepared_data
+        ]
     )
 
 
@@ -411,6 +496,36 @@ if __name__ == "__main__":
                 "previous_gpa": 3.6,
                 "semester": 4,
                 "gender": "Female",
+            },
+        },
+        {
+            "name": (
+                "Semester 1 strong student"
+            ),
+            "expected": "Low Risk",
+            "features": {
+                "attendance": 94,
+                "internal_marks": 88,
+                "assignment_score": 90,
+                "quiz_score": 86,
+                "previous_gpa": None,
+                "semester": 1,
+                "gender": "Female",
+            },
+        },
+        {
+            "name": (
+                "Semester 1 weak student"
+            ),
+            "expected": "High Risk",
+            "features": {
+                "attendance": 20,
+                "internal_marks": 15,
+                "assignment_score": 10,
+                "quiz_score": 12,
+                "previous_gpa": None,
+                "semester": 1,
+                "gender": "Male",
             },
         },
     ]

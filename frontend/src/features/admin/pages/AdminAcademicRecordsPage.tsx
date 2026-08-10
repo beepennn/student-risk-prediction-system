@@ -1,4 +1,5 @@
 import axios from "axios";
+
 import {
   useCallback,
   useEffect,
@@ -37,7 +38,9 @@ import type {
 
 import type { AdminStudent } from "../types/studentManagement";
 
+
 const PAGE_SIZE = 10;
+
 
 const emptyForm: AcademicRecordFormState = {
   studentId: "",
@@ -49,6 +52,7 @@ const emptyForm: AcademicRecordFormState = {
   semester: "",
   gender: "",
 };
+
 
 function AdminAcademicRecordsPage() {
   const { token } = useAuth();
@@ -73,14 +77,17 @@ function AdminAcademicRecordsPage() {
   const [genderFilter, setGenderFilter] =
     useState("");
 
-  const [page, setPage] = useState(1);
+  const [page, setPage] =
+    useState(1);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
   const [submitting, setSubmitting] =
     useState(false);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
   const [modalError, setModalError] =
     useState("");
@@ -92,172 +99,370 @@ function AdminAcademicRecordsPage() {
     useState(false);
 
   const [form, setForm] =
-    useState<AcademicRecordFormState>(emptyForm);
+    useState<AcademicRecordFormState>(
+      emptyForm,
+    );
 
-  const [formErrors, setFormErrors] = useState<
-    Partial<
-      Record<
-        keyof AcademicRecordFormState,
-        string
+  const [formErrors, setFormErrors] =
+    useState<
+      Partial<
+        Record<
+          keyof AcademicRecordFormState,
+          string
+        >
       >
-    >
-  >({});
+    >({});
 
-  const fetchData = useCallback(async () => {
+
+  /*
+   * Used by Refresh and after
+   * create/update operations.
+   */
+  const fetchData =
+    useCallback(async () => {
+      if (!token) {
+        setError(
+          "You are not authenticated.",
+        );
+
+        setLoading(false);
+
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError("");
+
+        const [
+          academicRecords,
+          studentRecords,
+        ] = await Promise.all([
+          getAcademicRecords(token),
+
+          getAdminStudents(
+            token,
+            {
+              skip: 0,
+              limit: 1000,
+            },
+          ),
+        ]);
+
+        setRecords(
+          [...academicRecords].sort(
+            (
+              firstRecord,
+              secondRecord,
+            ) =>
+              secondRecord.id
+              - firstRecord.id,
+          ),
+        );
+
+        setStudents(
+          studentRecords,
+        );
+      } catch (requestError) {
+        console.error(
+          "Failed to load academic records:",
+          requestError,
+        );
+
+        setError(
+          getErrorMessage(
+            requestError,
+          ),
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [token]);
+
+
+  /*
+   * Initial loading.
+   *
+   * IMPORTANT:
+   * We do not call fetchData()
+   * directly from this effect because
+   * fetchData immediately calls setState,
+   * which triggers the React lint rule
+   * shown in your screenshot.
+   *
+   * All state changes here occur after
+   * the asynchronous request finishes.
+   */
+  useEffect(() => {
     if (!token) {
-      setError("You are not authenticated.");
-      setLoading(false);
       return;
     }
 
-    try {
-      setLoading(true);
-      setError("");
+    let cancelled = false;
 
-      const [academicRecords, studentRecords] =
-        await Promise.all([
+    async function loadInitialData() {
+      try {
+        const [
+          academicRecords,
+          studentRecords,
+        ] = await Promise.all([
           getAcademicRecords(token),
 
-          getAdminStudents(token, {
-            skip: 0,
-            limit: 1000,
-          }),
+          getAdminStudents(
+            token,
+            {
+              skip: 0,
+              limit: 1000,
+            },
+          ),
         ]);
 
-      setRecords(
-        [...academicRecords].sort(
-          (firstRecord, secondRecord) =>
-            secondRecord.id - firstRecord.id,
-        ),
-      );
+        if (cancelled) {
+          return;
+        }
 
-      setStudents(studentRecords);
-    } catch (requestError) {
-      console.error(
-        "Failed to load academic records:",
-        requestError,
-      );
-
-      setError(getErrorMessage(requestError));
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
-
-  const studentsById = useMemo(() => {
-    return new Map(
-      students.map((student) => [
-        student.id,
-        student,
-      ]),
-    );
-  }, [students]);
-
-  const filteredRecords = useMemo(() => {
-    const normalisedSearch =
-      searchInput.trim().toLowerCase();
-
-    return records.filter((record) => {
-      const student = studentsById.get(
-        record.student_id,
-      );
-
-      const matchesSearch =
-        !normalisedSearch ||
-        student?.full_name
-          .toLowerCase()
-          .includes(normalisedSearch) ||
-        student?.email
-          .toLowerCase()
-          .includes(normalisedSearch) ||
-        student?.roll_number
-          .toLowerCase()
-          .includes(normalisedSearch) ||
-        student?.department
-          .toLowerCase()
-          .includes(normalisedSearch) ||
-        String(record.student_id).includes(
-          normalisedSearch,
+        setRecords(
+          [...academicRecords].sort(
+            (
+              firstRecord,
+              secondRecord,
+            ) =>
+              secondRecord.id
+              - firstRecord.id,
+          ),
         );
 
-      const matchesSemester =
-        !semesterFilter ||
-        record.semester ===
-          Number(semesterFilter);
+        setStudents(
+          studentRecords,
+        );
 
-      const matchesGender =
-        !genderFilter ||
-        record.gender.toLowerCase() ===
-          genderFilter.toLowerCase();
+        setError("");
+      } catch (requestError) {
+        if (cancelled) {
+          return;
+        }
 
-      return (
-        matchesSearch &&
-        matchesSemester &&
-        matchesGender
-      );
-    });
-  }, [
-    records,
-    studentsById,
-    searchInput,
-    semesterFilter,
-    genderFilter,
-  ]);
+        console.error(
+          "Failed to load academic records:",
+          requestError,
+        );
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredRecords.length / PAGE_SIZE),
-  );
-
-  const paginatedRecords = useMemo(() => {
-    const startIndex = (page - 1) * PAGE_SIZE;
-
-    return filteredRecords.slice(
-      startIndex,
-      startIndex + PAGE_SIZE,
-    );
-  }, [filteredRecords, page]);
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
+        setError(
+          getErrorMessage(
+            requestError,
+          ),
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
-  }, [page, totalPages]);
+
+    void loadInitialData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+
+  const studentsById =
+    useMemo(() => {
+      return new Map(
+        students.map(
+          (student) => [
+            student.id,
+            student,
+          ],
+        ),
+      );
+    }, [students]);
+
+
+  const filteredRecords =
+    useMemo(() => {
+      const normalisedSearch =
+        searchInput
+          .trim()
+          .toLowerCase();
+
+      return records.filter(
+        (record) => {
+          const student =
+            studentsById.get(
+              record.student_id,
+            );
+
+          const matchesSearch =
+            !normalisedSearch
+            || student?.full_name
+              .toLowerCase()
+              .includes(
+                normalisedSearch,
+              )
+            || student?.email
+              .toLowerCase()
+              .includes(
+                normalisedSearch,
+              )
+            || student?.roll_number
+              .toLowerCase()
+              .includes(
+                normalisedSearch,
+              )
+            || student?.department
+              .toLowerCase()
+              .includes(
+                normalisedSearch,
+              )
+            || String(
+              record.student_id,
+            ).includes(
+              normalisedSearch,
+            );
+
+          const matchesSemester =
+            !semesterFilter
+            || record.semester
+              === Number(
+                semesterFilter,
+              );
+
+          const matchesGender =
+            !genderFilter
+            || record.gender
+              .toLowerCase()
+              === genderFilter
+                .toLowerCase();
+
+          return (
+            matchesSearch
+            && matchesSemester
+            && matchesGender
+          );
+        },
+      );
+    }, [
+      records,
+      studentsById,
+      searchInput,
+      semesterFilter,
+      genderFilter,
+    ]);
+
+
+  const totalPages =
+    Math.max(
+      1,
+      Math.ceil(
+        filteredRecords.length
+        / PAGE_SIZE,
+      ),
+    );
+
+
+  /*
+   * Instead of using an effect with:
+   *
+   * setPage(totalPages)
+   *
+   * we derive a safe page.
+   * This removes the second React
+   * lint error from your screenshot.
+   */
+  const safePage =
+    Math.min(
+      page,
+      totalPages,
+    );
+
+
+  const paginatedRecords =
+    useMemo(() => {
+      const startIndex =
+        (safePage - 1)
+        * PAGE_SIZE;
+
+      return filteredRecords.slice(
+        startIndex,
+        startIndex
+          + PAGE_SIZE,
+      );
+    }, [
+      filteredRecords,
+      safePage,
+    ]);
+
 
   function openCreateModal() {
     setEditingRecord(null);
-    setForm(emptyForm);
-    setFormErrors({});
-    setModalError("");
-    setIsModalOpen(true);
-  }
-
-  function openEditModal(record: AcademicRecord) {
-    setEditingRecord(record);
 
     setForm({
-      studentId: String(record.student_id),
-      attendance: String(record.attendance),
-      internalMarks: String(
-        record.internal_marks,
-      ),
-      assignmentScore: String(
-        record.assignment_score,
-      ),
-      quizScore: String(record.quiz_score),
-      previousGpa: String(record.previous_gpa),
-      semester: String(record.semester),
-      gender: record.gender,
+      ...emptyForm,
     });
 
     setFormErrors({});
     setModalError("");
     setIsModalOpen(true);
   }
+
+
+  function openEditModal(
+    record: AcademicRecord,
+  ) {
+    setEditingRecord(
+      record,
+    );
+
+    setForm({
+      studentId:
+        String(
+          record.student_id,
+        ),
+
+      attendance:
+        String(
+          record.attendance,
+        ),
+
+      internalMarks:
+        String(
+          record.internal_marks,
+        ),
+
+      assignmentScore:
+        String(
+          record.assignment_score,
+        ),
+
+      quizScore:
+        String(
+          record.quiz_score,
+        ),
+
+      previousGpa:
+        record.previous_gpa
+          === null
+          ? ""
+          : String(
+              record.previous_gpa,
+            ),
+
+      semester:
+        String(
+          record.semester,
+        ),
+
+      gender:
+        record.gender,
+    });
+
+    setFormErrors({});
+    setModalError("");
+    setIsModalOpen(true);
+  }
+
 
   function closeModal() {
     if (submitting) {
@@ -265,30 +470,75 @@ function AdminAcademicRecordsPage() {
     }
 
     setIsModalOpen(false);
+
     setEditingRecord(null);
-    setForm(emptyForm);
+
+    setForm({
+      ...emptyForm,
+    });
+
     setFormErrors({});
+
     setModalError("");
   }
+
 
   function updateFormField(
-    field: keyof AcademicRecordFormState,
+    field:
+      keyof AcademicRecordFormState,
     value: string,
   ) {
-    setForm((currentForm) => ({
-      ...currentForm,
-      [field]: value,
-    }));
+    setForm(
+      (currentForm) => {
+        const updatedForm:
+          AcademicRecordFormState = {
+            ...currentForm,
+            [field]: value,
+          };
 
-    setFormErrors((currentErrors) => ({
-      ...currentErrors,
-      [field]: undefined,
-    }));
+        /*
+         * Semester 1 has no
+         * previous-semester GPA.
+         */
+        if (
+          field === "semester"
+          && value === "1"
+        ) {
+          updatedForm.previousGpa =
+            "";
+        }
+
+        return updatedForm;
+      },
+    );
+
+
+    setFormErrors(
+      (currentErrors) => {
+        const updatedErrors = {
+          ...currentErrors,
+          [field]: undefined,
+        };
+
+        if (
+          field === "semester"
+          && value === "1"
+        ) {
+          updatedErrors.previousGpa =
+            undefined;
+        }
+
+        return updatedErrors;
+      },
+    );
+
 
     setModalError("");
   }
 
-  function validateForm(): boolean {
+
+  function validateForm():
+    boolean {
     const errors: Partial<
       Record<
         keyof AcademicRecordFormState,
@@ -296,10 +546,12 @@ function AdminAcademicRecordsPage() {
       >
     > = {};
 
+
     if (!form.studentId) {
       errors.studentId =
         "Please select a student.";
     }
+
 
     validatePercentage(
       form.attendance,
@@ -308,12 +560,14 @@ function AdminAcademicRecordsPage() {
       errors,
     );
 
+
     validatePercentage(
       form.internalMarks,
       "Internal marks",
       "internalMarks",
       errors,
     );
+
 
     validatePercentage(
       form.assignmentScore,
@@ -322,6 +576,7 @@ function AdminAcademicRecordsPage() {
       errors,
     );
 
+
     validatePercentage(
       form.quizScore,
       "Quiz score",
@@ -329,54 +584,86 @@ function AdminAcademicRecordsPage() {
       errors,
     );
 
-    if (!form.previousGpa.trim()) {
-      errors.previousGpa =
-        "Previous GPA is required.";
-    } else {
-      const previousGpa = Number(
-        form.previousGpa,
-      );
 
-      if (
-        Number.isNaN(previousGpa) ||
-        previousGpa < 0 ||
-        previousGpa > 4
-      ) {
-        errors.previousGpa =
-          "Previous GPA must be between 0 and 4.";
-      }
-    }
-
+    /*
+     * Semester validation
+     */
     if (!form.semester) {
       errors.semester =
         "Please select a semester.";
     } else {
-      const semester = Number(form.semester);
+      const semester =
+        Number(
+          form.semester,
+        );
 
       if (
-        !Number.isInteger(semester) ||
-        semester < 1 ||
-        semester > 8
+        !Number.isInteger(
+          semester,
+        )
+        || semester < 1
+        || semester > 8
       ) {
         errors.semester =
           "Semester must be between 1 and 8.";
+      } else if (
+        semester > 1
+      ) {
+        /*
+         * GPA required only from
+         * Semester 2 onward.
+         */
+        if (
+          !form.previousGpa.trim()
+        ) {
+          errors.previousGpa =
+            "Previous GPA is required for Semester 2 and above.";
+        } else {
+          const previousGpa =
+            Number(
+              form.previousGpa,
+            );
+
+          if (
+            Number.isNaN(
+              previousGpa,
+            )
+            || previousGpa < 0
+            || previousGpa > 4
+          ) {
+            errors.previousGpa =
+              "Previous GPA must be between 0 and 4.";
+          }
+        }
       }
     }
+
 
     if (!form.gender) {
       errors.gender =
         "Please select gender.";
     }
 
-    setFormErrors(errors);
 
-    return Object.keys(errors).length === 0;
+    setFormErrors(
+      errors,
+    );
+
+
+    return (
+      Object.keys(
+        errors,
+      ).length === 0
+    );
   }
 
+
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
+    event:
+      FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+
 
     if (!token) {
       setModalError(
@@ -386,33 +673,73 @@ function AdminAcademicRecordsPage() {
       return;
     }
 
+
     if (!validateForm()) {
       return;
     }
 
+
     try {
       setSubmitting(true);
+
       setModalError("");
       setError("");
       setSuccessMessage("");
 
-      const payload: CreateAcademicRecordPayload =
-        {
-          student_id: Number(form.studentId),
-          attendance: Number(form.attendance),
-          internal_marks: Number(
-            form.internalMarks,
-          ),
-          assignment_score: Number(
-            form.assignmentScore,
-          ),
-          quiz_score: Number(form.quizScore),
-          previous_gpa: Number(
-            form.previousGpa,
-          ),
-          semester: Number(form.semester),
-          gender: form.gender,
+
+      const semester =
+        Number(
+          form.semester,
+        );
+
+
+      const payload:
+        CreateAcademicRecordPayload = {
+          student_id:
+            Number(
+              form.studentId,
+            ),
+
+          attendance:
+            Number(
+              form.attendance,
+            ),
+
+          internal_marks:
+            Number(
+              form.internalMarks,
+            ),
+
+          assignment_score:
+            Number(
+              form.assignmentScore,
+            ),
+
+          quiz_score:
+            Number(
+              form.quizScore,
+            ),
+
+          /*
+           * Semester 1 sends null.
+           *
+           * Do NOT convert empty string
+           * with Number("") because that
+           * would become 0.
+           */
+          previous_gpa:
+            semester === 1
+              ? null
+              : Number(
+                  form.previousGpa,
+                ),
+
+          semester,
+
+          gender:
+            form.gender,
         };
+
 
       if (editingRecord) {
         await updateAcademicRecord(
@@ -435,11 +762,19 @@ function AdminAcademicRecordsPage() {
         );
       }
 
+
       setIsModalOpen(false);
+
       setEditingRecord(null);
-      setForm(emptyForm);
+
+      setForm({
+        ...emptyForm,
+      });
+
       setFormErrors({});
+
       setModalError("");
+
 
       await fetchData();
     } catch (requestError) {
@@ -449,12 +784,15 @@ function AdminAcademicRecordsPage() {
       );
 
       setModalError(
-        getErrorMessage(requestError),
+        getErrorMessage(
+          requestError,
+        ),
       );
     } finally {
       setSubmitting(false);
     }
   }
+
 
   function resetFilters() {
     setSearchInput("");
@@ -462,6 +800,7 @@ function AdminAcademicRecordsPage() {
     setGenderFilter("");
     setPage(1);
   }
+
 
   return (
     <div className="space-y-6">
@@ -479,51 +818,69 @@ function AdminAcademicRecordsPage() {
           </div>
 
           <p className="mt-2 text-gray-500">
-            Add and correct student attendance,
-            marks, GPA and semester performance.
+            Add and correct student
+            attendance, marks, GPA and
+            semester performance.
           </p>
         </div>
 
+
         <button
           type="button"
-          onClick={openCreateModal}
+          onClick={
+            openCreateModal
+          }
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700"
         >
           <FiPlus />
+
           Add Academic Record
         </button>
       </header>
 
+
       {successMessage && (
         <AlertMessage
           type="success"
-          message={successMessage}
+          message={
+            successMessage
+          }
           onClose={() =>
             setSuccessMessage("")
           }
         />
       )}
 
+
       {error && (
         <AlertMessage
           type="error"
           message={error}
-          onClose={() => setError("")}
+          onClose={() =>
+            setError("")
+          }
         />
       )}
 
+
       <section className="rounded-xl bg-white p-5 shadow-sm">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+
           <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
 
             <input
               type="search"
-              value={searchInput}
-              onChange={(event) => {
+              value={
+                searchInput
+              }
+              onChange={(
+                event,
+              ) => {
                 setSearchInput(
                   event.target.value,
                 );
+
                 setPage(1);
               }}
               placeholder="Search by student..."
@@ -531,42 +888,72 @@ function AdminAcademicRecordsPage() {
             />
           </div>
 
+
           <select
-            value={semesterFilter}
-            onChange={(event) => {
+            value={
+              semesterFilter
+            }
+            onChange={(
+              event,
+            ) => {
               setSemesterFilter(
                 event.target.value,
               );
+
               setPage(1);
             }}
-            className={getInputClass(false)}
+            className={
+              getInputClass(
+                false,
+              )
+            }
           >
             <option value="">
               All semesters
             </option>
 
             {Array.from(
-              { length: 8 },
-              (_, index) => (
+              {
+                length: 8,
+              },
+              (
+                _,
+                index,
+              ) => (
                 <option
-                  key={index + 1}
-                  value={index + 1}
+                  key={
+                    index + 1
+                  }
+                  value={
+                    index + 1
+                  }
                 >
-                  Semester {index + 1}
+                  Semester{" "}
+                  {index + 1}
                 </option>
               ),
             )}
           </select>
 
+
           <select
-            value={genderFilter}
-            onChange={(event) => {
+            value={
+              genderFilter
+            }
+            onChange={(
+              event,
+            ) => {
               setGenderFilter(
                 event.target.value,
               );
+
               setPage(1);
             }}
-            className={getInputClass(false)}
+            className={
+              getInputClass(
+                false,
+              )
+            }
           >
             <option value="">
               All genders
@@ -585,25 +972,35 @@ function AdminAcademicRecordsPage() {
             </option>
           </select>
 
+
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => void fetchData()}
-              disabled={loading}
+              onClick={() =>
+                void fetchData()
+              }
+              disabled={
+                loading
+              }
               className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               <FiRefreshCw
                 className={
-                  loading ? "animate-spin" : ""
+                  loading
+                    ? "animate-spin"
+                    : ""
                 }
               />
 
               Refresh
             </button>
 
+
             <button
               type="button"
-              onClick={resetFilters}
+              onClick={
+                resetFilters
+              }
               className="rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
             >
               Clear
@@ -612,18 +1009,26 @@ function AdminAcademicRecordsPage() {
         </div>
       </section>
 
+
       <section className="overflow-hidden rounded-xl bg-white shadow-sm">
+
         {loading ? (
           <LoadingState />
-        ) : filteredRecords.length === 0 ? (
+        ) : filteredRecords.length
+          === 0 ? (
           <EmptyState
-            onAdd={openCreateModal}
+            onAdd={
+              openCreateModal
+            }
           />
         ) : (
           <div className="overflow-x-auto">
+
             <table className="min-w-full divide-y divide-gray-200">
+
               <thead className="bg-gray-50">
                 <tr>
+
                   <TableHeader>
                     Student
                   </TableHeader>
@@ -649,7 +1054,7 @@ function AdminAcademicRecordsPage() {
                   </TableHeader>
 
                   <TableHeader>
-                    GPA
+                    Previous GPA
                   </TableHeader>
 
                   <TableHeader>
@@ -659,10 +1064,13 @@ function AdminAcademicRecordsPage() {
                   <TableHeader align="right">
                     Actions
                   </TableHeader>
+
                 </tr>
               </thead>
 
+
               <tbody className="divide-y divide-gray-100">
+
                 {paginatedRecords.map(
                   (record) => {
                     const student =
@@ -672,29 +1080,36 @@ function AdminAcademicRecordsPage() {
 
                     return (
                       <tr
-                        key={record.id}
+                        key={
+                          record.id
+                        }
                         className="hover:bg-gray-50"
                       >
+
                         <TableCell>
                           <div>
                             <p className="font-medium text-gray-900">
-                              {student?.full_name ??
-                                `Student #${record.student_id}`}
+                              {student?.full_name
+                                ?? `Student #${record.student_id}`}
                             </p>
 
                             <p className="mt-1 text-xs text-gray-500">
-                              {student?.roll_number ??
-                                "Student information unavailable"}
+                              {student?.roll_number
+                                ?? "Student information unavailable"}
                             </p>
                           </div>
                         </TableCell>
 
+
                         <TableCell>
                           <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
                             Semester{" "}
-                            {record.semester}
+                            {
+                              record.semester
+                            }
                           </span>
                         </TableCell>
+
 
                         <TableCell>
                           {formatScore(
@@ -703,11 +1118,13 @@ function AdminAcademicRecordsPage() {
                           )}
                         </TableCell>
 
+
                         <TableCell>
                           {formatScore(
                             record.internal_marks,
                           )}
                         </TableCell>
+
 
                         <TableCell>
                           {formatScore(
@@ -715,29 +1132,46 @@ function AdminAcademicRecordsPage() {
                           )}
                         </TableCell>
 
+
                         <TableCell>
                           {formatScore(
                             record.quiz_score,
                           )}
                         </TableCell>
 
-                        <TableCell>
-                          <span className="font-semibold text-gray-900">
-                            {Number(
-                              record.previous_gpa,
-                            ).toFixed(2)}
-                          </span>
-                        </TableCell>
 
                         <TableCell>
-                          {record.gender}
+                          {record.previous_gpa
+                          === null ? (
+                            <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-600">
+                              N/A
+                            </span>
+                          ) : (
+                            <span className="font-semibold text-gray-900">
+                              {Number(
+                                record.previous_gpa,
+                              ).toFixed(
+                                2,
+                              )}
+                            </span>
+                          )}
                         </TableCell>
+
+
+                        <TableCell>
+                          {
+                            record.gender
+                          }
+                        </TableCell>
+
 
                         <TableCell align="right">
                           <button
                             type="button"
                             onClick={() =>
-                              openEditModal(record)
+                              openEditModal(
+                                record,
+                              )
                             }
                             className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50"
                             title="Edit academic record"
@@ -746,62 +1180,117 @@ function AdminAcademicRecordsPage() {
                             <FiEdit2 />
                           </button>
                         </TableCell>
+
                       </tr>
                     );
                   },
                 )}
+
               </tbody>
             </table>
           </div>
         )}
 
+
         <Pagination
-          page={page}
-          totalPages={totalPages}
-          totalItems={filteredRecords.length}
-          loading={loading}
-          onPageChange={setPage}
+          page={
+            safePage
+          }
+          totalPages={
+            totalPages
+          }
+          totalItems={
+            filteredRecords.length
+          }
+          loading={
+            loading
+          }
+          onPageChange={
+            setPage
+          }
         />
+
       </section>
+
 
       {isModalOpen && (
         <AcademicRecordModal
-          editingRecord={editingRecord}
-          students={students}
-          form={form}
-          formErrors={formErrors}
-          modalError={modalError}
-          submitting={submitting}
-          onClose={closeModal}
-          onSubmit={handleSubmit}
-          onFieldChange={updateFormField}
+          editingRecord={
+            editingRecord
+          }
+          students={
+            students
+          }
+          form={
+            form
+          }
+          formErrors={
+            formErrors
+          }
+          modalError={
+            modalError
+          }
+          submitting={
+            submitting
+          }
+          onClose={
+            closeModal
+          }
+          onSubmit={
+            handleSubmit
+          }
+          onFieldChange={
+            updateFormField
+          }
         />
       )}
     </div>
   );
 }
 
+
 interface AcademicRecordModalProps {
-  editingRecord: AcademicRecord | null;
-  students: AdminStudent[];
-  form: AcademicRecordFormState;
-  formErrors: Partial<
-    Record<
-      keyof AcademicRecordFormState,
-      string
-    >
-  >;
-  modalError: string;
-  submitting: boolean;
-  onClose: () => void;
-  onSubmit: (
-    event: FormEvent<HTMLFormElement>,
-  ) => Promise<void>;
-  onFieldChange: (
-    field: keyof AcademicRecordFormState,
-    value: string,
-  ) => void;
+  editingRecord:
+    AcademicRecord | null;
+
+  students:
+    AdminStudent[];
+
+  form:
+    AcademicRecordFormState;
+
+  formErrors:
+    Partial<
+      Record<
+        keyof AcademicRecordFormState,
+        string
+      >
+    >;
+
+  modalError:
+    string;
+
+  submitting:
+    boolean;
+
+  onClose:
+    () => void;
+
+  onSubmit:
+    (
+      event:
+        FormEvent<HTMLFormElement>,
+    ) => Promise<void>;
+
+  onFieldChange:
+    (
+      field:
+        keyof AcademicRecordFormState,
+      value:
+        string,
+    ) => void;
 }
+
 
 function AcademicRecordModal({
   editingRecord,
@@ -814,10 +1303,21 @@ function AcademicRecordModal({
   onSubmit,
   onFieldChange,
 }: AcademicRecordModalProps) {
+
+  const isFirstSemester =
+    form.semester === "1";
+
+  const hasSelectedSemester =
+    form.semester !== "";
+
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+
       <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-2xl">
+
         <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-white px-6 py-5">
+
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
               {editingRecord
@@ -832,122 +1332,202 @@ function AcademicRecordModal({
             </p>
           </div>
 
+
           <button
             type="button"
-            onClick={onClose}
-            disabled={submitting}
+            onClick={
+              onClose
+            }
+            disabled={
+              submitting
+            }
             className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
             aria-label="Close modal"
           >
-            <FiX size={21} />
+            <FiX
+              size={21}
+            />
           </button>
+
         </div>
 
+
         <form
-          onSubmit={(event) =>
-            void onSubmit(event)
+          onSubmit={(
+            event,
+          ) =>
+            void onSubmit(
+              event,
+            )
           }
           className="p-6"
         >
+
           {modalError && (
             <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {modalError}
+              {
+                modalError
+              }
             </div>
           )}
 
+
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+
             <div className="md:col-span-2">
               <FormField
                 label="Student"
                 required
-                error={formErrors.studentId}
+                error={
+                  formErrors.studentId
+                }
               >
                 <select
-                  value={form.studentId}
-                  onChange={(event) =>
+                  value={
+                    form.studentId
+                  }
+                  onChange={(
+                    event,
+                  ) =>
                     onFieldChange(
                       "studentId",
                       event.target.value,
                     )
                   }
-                  disabled={submitting}
-                  className={getInputClass(
-                    Boolean(
-                      formErrors.studentId,
-                    ),
-                  )}
+                  disabled={
+                    submitting
+                  }
+                  className={
+                    getInputClass(
+                      Boolean(
+                        formErrors.studentId,
+                      ),
+                    )
+                  }
                 >
                   <option value="">
                     Select student
                   </option>
 
-                  {students.map((student) => (
-                    <option
-                      key={student.id}
-                      value={student.id}
-                    >
-                      {student.full_name} —{" "}
-                      {student.roll_number} —{" "}
-                      {student.department}
-                    </option>
-                  ))}
+                  {students.map(
+                    (
+                      student,
+                    ) => (
+                      <option
+                        key={
+                          student.id
+                        }
+                        value={
+                          student.id
+                        }
+                      >
+                        {
+                          student.full_name
+                        }{" "}
+                        —{" "}
+                        {
+                          student.roll_number
+                        }{" "}
+                        —{" "}
+                        {
+                          student.department
+                        }
+                      </option>
+                    ),
+                  )}
                 </select>
               </FormField>
             </div>
 
+
             <FormField
               label="Semester"
               required
-              error={formErrors.semester}
+              error={
+                formErrors.semester
+              }
             >
               <select
-                value={form.semester}
-                onChange={(event) =>
+                value={
+                  form.semester
+                }
+                onChange={(
+                  event,
+                ) =>
                   onFieldChange(
                     "semester",
                     event.target.value,
                   )
                 }
-                disabled={submitting}
-                className={getInputClass(
-                  Boolean(formErrors.semester),
-                )}
+                disabled={
+                  submitting
+                }
+                className={
+                  getInputClass(
+                    Boolean(
+                      formErrors.semester,
+                    ),
+                  )
+                }
               >
                 <option value="">
                   Select semester
                 </option>
 
                 {Array.from(
-                  { length: 8 },
-                  (_, index) => (
+                  {
+                    length: 8,
+                  },
+                  (
+                    _,
+                    index,
+                  ) => (
                     <option
-                      key={index + 1}
-                      value={index + 1}
+                      key={
+                        index + 1
+                      }
+                      value={
+                        index + 1
+                      }
                     >
-                      Semester {index + 1}
+                      Semester{" "}
+                      {index + 1}
                     </option>
                   ),
                 )}
               </select>
             </FormField>
 
+
             <FormField
               label="Gender"
               required
-              error={formErrors.gender}
+              error={
+                formErrors.gender
+              }
             >
               <select
-                value={form.gender}
-                onChange={(event) =>
+                value={
+                  form.gender
+                }
+                onChange={(
+                  event,
+                ) =>
                   onFieldChange(
                     "gender",
                     event.target.value,
                   )
                 }
-                disabled={submitting}
-                className={getInputClass(
-                  Boolean(formErrors.gender),
-                )}
+                disabled={
+                  submitting
+                }
+                className={
+                  getInputClass(
+                    Boolean(
+                      formErrors.gender,
+                    ),
+                  )
+                }
               >
                 <option value="">
                   Select gender
@@ -967,103 +1547,183 @@ function AcademicRecordModal({
               </select>
             </FormField>
 
+
             <ScoreInput
               label="Attendance (%)"
-              value={form.attendance}
-              error={formErrors.attendance}
-              onChange={(value) =>
+              value={
+                form.attendance
+              }
+              error={
+                formErrors.attendance
+              }
+              onChange={(
+                value,
+              ) =>
                 onFieldChange(
                   "attendance",
                   value,
                 )
               }
-              submitting={submitting}
+              submitting={
+                submitting
+              }
             />
+
 
             <ScoreInput
               label="Internal Marks"
-              value={form.internalMarks}
-              error={formErrors.internalMarks}
-              onChange={(value) =>
+              value={
+                form.internalMarks
+              }
+              error={
+                formErrors.internalMarks
+              }
+              onChange={(
+                value,
+              ) =>
                 onFieldChange(
                   "internalMarks",
                   value,
                 )
               }
-              submitting={submitting}
+              submitting={
+                submitting
+              }
             />
+
 
             <ScoreInput
               label="Assignment Score"
-              value={form.assignmentScore}
+              value={
+                form.assignmentScore
+              }
               error={
                 formErrors.assignmentScore
               }
-              onChange={(value) =>
+              onChange={(
+                value,
+              ) =>
                 onFieldChange(
                   "assignmentScore",
                   value,
                 )
               }
-              submitting={submitting}
+              submitting={
+                submitting
+              }
             />
+
 
             <ScoreInput
               label="Quiz Score"
-              value={form.quizScore}
-              error={formErrors.quizScore}
-              onChange={(value) =>
+              value={
+                form.quizScore
+              }
+              error={
+                formErrors.quizScore
+              }
+              onChange={(
+                value,
+              ) =>
                 onFieldChange(
                   "quizScore",
                   value,
                 )
               }
-              submitting={submitting}
+              submitting={
+                submitting
+              }
             />
+
 
             <FormField
               label="Previous GPA"
-              required
-              error={formErrors.previousGpa}
+              required={
+                hasSelectedSemester
+                && !isFirstSemester
+              }
+              error={
+                formErrors.previousGpa
+              }
             >
+
               <input
                 type="number"
                 min="0"
                 max="4"
                 step="0.01"
-                value={form.previousGpa}
-                onChange={(event) =>
+                value={
+                  isFirstSemester
+                    ? ""
+                    : form.previousGpa
+                }
+                onChange={(
+                  event,
+                ) =>
                   onFieldChange(
                     "previousGpa",
                     event.target.value,
                   )
                 }
-                placeholder="Example: 3.25"
-                disabled={submitting}
-                className={getInputClass(
-                  Boolean(
-                    formErrors.previousGpa,
-                  ),
-                )}
+                placeholder={
+                  isFirstSemester
+                    ? "Not applicable for Semester 1"
+                    : "Example: 3.25"
+                }
+                disabled={
+                  submitting
+                  || isFirstSemester
+                }
+                className={
+                  getInputClass(
+                    Boolean(
+                      formErrors.previousGpa,
+                    ),
+                  )
+                }
               />
+
+
+              {isFirstSemester && (
+                <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                  Previous GPA is not
+                  applicable for
+                  first-semester students
+                  because they do not
+                  have a previous-semester
+                  academic result.
+                </div>
+              )}
+
             </FormField>
+
           </div>
 
+
           <div className="mt-7 flex flex-col-reverse gap-3 border-t border-gray-200 pt-5 sm:flex-row sm:justify-end">
+
             <button
               type="button"
-              onClick={onClose}
-              disabled={submitting}
+              onClick={
+                onClose
+              }
+              disabled={
+                submitting
+              }
               className="rounded-lg border border-gray-300 px-5 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               Cancel
             </button>
 
+
             <button
               type="submit"
-              disabled={submitting}
+              disabled={
+                submitting
+              }
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
+
               {submitting && (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-white" />
               )}
@@ -1073,13 +1733,19 @@ function AcademicRecordModal({
                 : editingRecord
                   ? "Save Changes"
                   : "Create Record"}
+
             </button>
+
           </div>
+
         </form>
+
       </div>
+
     </div>
   );
 }
+
 
 function ScoreInput({
   label,
@@ -1091,7 +1757,8 @@ function ScoreInput({
   label: string;
   value: string;
   error?: string;
-  onChange: (value: string) => void;
+  onChange:
+    (value: string) => void;
   submitting: boolean;
 }) {
   return (
@@ -1106,18 +1773,29 @@ function ScoreInput({
         max="100"
         step="0.01"
         value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
+        onChange={(
+          event,
+        ) =>
+          onChange(
+            event.target.value,
+          )
         }
         placeholder="Enter value from 0 to 100"
-        disabled={submitting}
-        className={getInputClass(
-          Boolean(error),
-        )}
+        disabled={
+          submitting
+        }
+        className={
+          getInputClass(
+            Boolean(
+              error,
+            ),
+          )
+        }
       />
     </FormField>
   );
 }
+
 
 function FormField({
   label,
@@ -1132,6 +1810,7 @@ function FormField({
 }) {
   return (
     <label className="block">
+
       <span className="mb-2 block text-sm font-medium text-gray-700">
         {label}
 
@@ -1149,16 +1828,20 @@ function FormField({
           {error}
         </span>
       )}
+
     </label>
   );
 }
+
 
 function TableHeader({
   children,
   align = "left",
 }: {
   children: ReactNode;
-  align?: "left" | "right";
+  align?:
+    | "left"
+    | "right";
 }) {
   return (
     <th
@@ -1173,12 +1856,15 @@ function TableHeader({
   );
 }
 
+
 function TableCell({
   children,
   align = "left",
 }: {
   children: ReactNode;
-  align?: "left" | "right";
+  align?:
+    | "left"
+    | "right";
 }) {
   return (
     <td
@@ -1193,15 +1879,20 @@ function TableCell({
   );
 }
 
+
 function AlertMessage({
   type,
   message,
   onClose,
 }: {
-  type: "success" | "error";
+  type:
+    | "success"
+    | "error";
   message: string;
-  onClose: () => void;
+  onClose:
+    () => void;
 }) {
+
   const classes =
     type === "success"
       ? "border-green-200 bg-green-50 text-green-700"
@@ -1211,11 +1902,16 @@ function AlertMessage({
     <div
       className={`flex items-start justify-between gap-4 rounded-lg border px-4 py-3 ${classes}`}
     >
-      <p>{message}</p>
+      <p>
+        {message}
+      </p>
 
       <button
         type="button"
-        onClick={onClose}
+        onClick={
+          onClose
+        }
+        aria-label="Close message"
       >
         <FiX />
       </button>
@@ -1223,25 +1919,31 @@ function AlertMessage({
   );
 }
 
+
 function LoadingState() {
   return (
     <div className="p-12 text-center">
+
       <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
 
       <p className="mt-4 text-gray-500">
         Loading academic records...
       </p>
+
     </div>
   );
 }
 
+
 function EmptyState({
   onAdd,
 }: {
-  onAdd: () => void;
+  onAdd:
+    () => void;
 }) {
   return (
     <div className="p-12 text-center">
+
       <FiBookOpen
         size={46}
         className="mx-auto text-gray-300"
@@ -1257,15 +1959,20 @@ function EmptyState({
 
       <button
         type="button"
-        onClick={onAdd}
+        onClick={
+          onAdd
+        }
         className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white"
       >
         <FiPlus />
+
         Add Academic Record
       </button>
+
     </div>
   );
 }
+
 
 function Pagination({
   page,
@@ -1278,35 +1985,52 @@ function Pagination({
   totalPages: number;
   totalItems: number;
   loading: boolean;
-  onPageChange: (page: number) => void;
+  onPageChange:
+    (page: number) => void;
 }) {
   return (
-    <div className="flex items-center justify-between border-t border-gray-200 px-5 py-4">
+    <div className="flex flex-col gap-3 border-t border-gray-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
       <p className="text-sm text-gray-500">
-        Page {page} of {totalPages} ·{" "}
+        Page {page} of{" "}
+        {totalPages} ·{" "}
         {totalItems} record
-        {totalItems === 1 ? "" : "s"}
+        {totalItems === 1
+          ? ""
+          : "s"}
       </p>
 
+
       <div className="flex gap-2">
+
         <button
           type="button"
-          disabled={page === 1 || loading}
+          disabled={
+            page === 1
+            || loading
+          }
           onClick={() =>
             onPageChange(
-              Math.max(1, page - 1),
+              Math.max(
+                1,
+                page - 1,
+              ),
             )
           }
           className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm disabled:opacity-50"
         >
           <FiChevronLeft />
+
           Previous
         </button>
+
 
         <button
           type="button"
           disabled={
-            page >= totalPages || loading
+            page
+              >= totalPages
+            || loading
           }
           onClick={() =>
             onPageChange(
@@ -1319,12 +2043,16 @@ function Pagination({
           className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm disabled:opacity-50"
         >
           Next
+
           <FiChevronRight />
         </button>
+
       </div>
+
     </div>
   );
 }
+
 
 function validatePercentage(
   value: string,
@@ -1334,102 +2062,196 @@ function validatePercentage(
     | "internalMarks"
     | "assignmentScore"
     | "quizScore",
-  errors: Partial<
-    Record<
-      keyof AcademicRecordFormState,
-      string
-    >
-  >,
+  errors:
+    Partial<
+      Record<
+        keyof AcademicRecordFormState,
+        string
+      >
+    >,
 ) {
+
   if (!value.trim()) {
-    errors[field] = `${label} is required.`;
+    errors[field] =
+      `${label} is required.`;
+
     return;
   }
 
-  const numericValue = Number(value);
+
+  const numericValue =
+    Number(
+      value,
+    );
+
 
   if (
-    Number.isNaN(numericValue) ||
-    numericValue < 0 ||
-    numericValue > 100
+    Number.isNaN(
+      numericValue,
+    )
+    || numericValue < 0
+    || numericValue > 100
   ) {
     errors[field] =
       `${label} must be between 0 and 100.`;
   }
 }
 
+
 function getInputClass(
   hasError: boolean,
 ): string {
   return [
-    "w-full rounded-lg border bg-white px-4 py-2.5 text-gray-900 outline-none transition disabled:bg-gray-100",
+    "w-full rounded-lg border bg-white px-4 py-2.5 text-gray-900 outline-none transition disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500",
+
     hasError
-      ? "border-red-400 focus:ring-2 focus:ring-red-100"
+      ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
       : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
   ].join(" ");
 }
+
 
 function formatScore(
   value: number,
   suffix = "",
 ): string {
-  return `${Number(value).toFixed(2)}${suffix}`;
+  return `${
+    Number(
+      value,
+    ).toFixed(
+      2,
+    )
+  }${suffix}`;
 }
 
-function getErrorMessage(
-  error: unknown,
-): string {
-  if (axios.isAxiosError(error)) {
-    const detail =
-      error.response?.data?.detail;
 
-    if (typeof detail === "string") {
+function getErrorMessage(
+  error:
+    unknown,
+): string {
+
+  if (
+    axios.isAxiosError(
+      error,
+    )
+  ) {
+    const detail =
+      error.response
+        ?.data
+        ?.detail;
+
+
+    if (
+      typeof detail
+      === "string"
+    ) {
       return detail;
     }
 
-    if (Array.isArray(detail)) {
-      return detail
-        .map((item) => {
-          if (
-            typeof item === "object" &&
-            item !== null &&
-            "msg" in item &&
-            typeof item.msg === "string"
-          ) {
-            return item.msg;
-          }
 
-          return "Validation error";
-        })
+    if (
+      Array.isArray(
+        detail,
+      )
+    ) {
+      return detail
+        .map(
+          (item) => {
+
+            if (
+              typeof item
+                === "object"
+              && item
+                !== null
+              && "msg" in item
+              && typeof item.msg
+                === "string"
+            ) {
+              return item.msg;
+            }
+
+            return (
+              "Validation error"
+            );
+          },
+        )
         .join(", ");
     }
 
-    if (error.response?.status === 400) {
-      return "Another academic record already exists for this student and semester.";
+
+    if (
+      error.response
+        ?.status
+      === 400
+    ) {
+      return (
+        "Another academic record already "
+        + "exists for this student and semester."
+      );
     }
 
-    if (error.response?.status === 401) {
-      return "Your session has expired.";
+
+    if (
+      error.response
+        ?.status
+      === 401
+    ) {
+      return (
+        "Your session has expired."
+      );
     }
 
-    if (error.response?.status === 403) {
-      return "You do not have permission to manage academic records.";
+
+    if (
+      error.response
+        ?.status
+      === 403
+    ) {
+      return (
+        "You do not have permission "
+        + "to manage academic records."
+      );
     }
 
-    if (error.response?.status === 404) {
-      return "The academic record or student was not found.";
+
+    if (
+      error.response
+        ?.status
+      === 404
+    ) {
+      return (
+        "The academic record or "
+        + "student was not found."
+      );
     }
 
-    if (error.response?.status === 422) {
-      return "Please check all entered values.";
+
+    if (
+      error.response
+        ?.status
+      === 422
+    ) {
+      return (
+        "Please check all entered "
+        + "academic values."
+      );
     }
+
 
     if (!error.response) {
-      return "Cannot connect to the backend server.";
+      return (
+        "Cannot connect to "
+        + "the backend server."
+      );
     }
   }
 
-  return "Something went wrong. Please try again.";
+
+  return (
+    "Something went wrong. "
+    + "Please try again."
+  );
 }
+
 
 export default AdminAcademicRecordsPage;
