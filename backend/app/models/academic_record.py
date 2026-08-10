@@ -9,14 +9,6 @@ from sqlalchemy import (
 
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-    Integer,
-    Float,
-    ForeignKey,
-    DateTime,
-    String,
-)
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
 
 from app.database.base import Base
 
@@ -42,11 +34,6 @@ class AcademicRecord(Base):
     # by the existing ML model.
 
     attendance = Column(
-        ForeignKey("students.id"),
-        nullable=False,
-    )
-
-    attendance = Column(
         Float,
         nullable=False,
     )
@@ -56,14 +43,7 @@ class AcademicRecord(Base):
         nullable=False,
     )
 
-    internal_marks = Column(
     assignment_score = Column(
-        Float,
-        nullable=False,
-    )
-
-    assignment_score = Column(
-    quiz_score = Column(
         Float,
         nullable=False,
     )
@@ -73,18 +53,6 @@ class AcademicRecord(Base):
         nullable=False,
     )
 
-    previous_gpa = Column(
-        Float,
-        nullable=True,
-    )
-
-    semester = Column(
-        Integer,
-        nullable=False,
-    )
-
-    # Semester 1 students do not have
-    # a previous-semester GPA.
     previous_gpa = Column(
         Float,
         nullable=True,
