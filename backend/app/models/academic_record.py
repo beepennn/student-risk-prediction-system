@@ -1,5 +1,14 @@
 from sqlalchemy import (
     Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+)
+
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
     Integer,
     Float,
     ForeignKey,
@@ -23,6 +32,16 @@ class AcademicRecord(Base):
 
     student_id = Column(
         Integer,
+        ForeignKey(
+            "students.id"
+        ),
+        nullable=False,
+    )
+
+    # Semester-level averages used
+    # by the existing ML model.
+
+    attendance = Column(
         ForeignKey("students.id"),
         nullable=False,
     )
@@ -37,13 +56,30 @@ class AcademicRecord(Base):
         nullable=False,
     )
 
+    internal_marks = Column(
     assignment_score = Column(
+        Float,
+        nullable=False,
+    )
+
+    assignment_score = Column(
+    quiz_score = Column(
         Float,
         nullable=False,
     )
 
     quiz_score = Column(
         Float,
+        nullable=False,
+    )
+
+    previous_gpa = Column(
+        Float,
+        nullable=True,
+    )
+
+    semester = Column(
+        Integer,
         nullable=False,
     )
 
@@ -72,4 +108,11 @@ class AcademicRecord(Base):
     student = relationship(
         "Student",
         back_populates="academic_records",
+    )
+
+    subject_records = relationship(
+        "SubjectAcademicRecord",
+        back_populates="academic_record",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
