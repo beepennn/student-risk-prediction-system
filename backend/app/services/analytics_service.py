@@ -18,19 +18,19 @@ def get_dashboard_summary(db: Session):
 
     high_risk = (
         db.query(Prediction)
-        .filter(Prediction.risk_level == "High")
+        .filter(Prediction.risk_level == "High Risk")
         .count()
     )
 
     medium_risk = (
         db.query(Prediction)
-        .filter(Prediction.risk_level == "Medium")
+        .filter(Prediction.risk_level == "Medium Risk")
         .count()
     )
 
     low_risk = (
         db.query(Prediction)
-        .filter(Prediction.risk_level == "Low")
+        .filter(Prediction.risk_level == "Low Risk")
         .count()
     )
 
@@ -48,33 +48,33 @@ def get_dashboard_summary(db: Session):
 def get_risk_distribution(db: Session):
     high = (
         db.query(Prediction)
-        .filter(Prediction.risk_level == "High")
+        .filter(Prediction.risk_level == "High Risk")
         .count()
     )
 
     medium = (
         db.query(Prediction)
-        .filter(Prediction.risk_level == "Medium")
+        .filter(Prediction.risk_level == "Medium Risk")
         .count()
     )
 
     low = (
         db.query(Prediction)
-        .filter(Prediction.risk_level == "Low")
+        .filter(Prediction.risk_level == "Low Risk")
         .count()
     )
 
     return [
         {
-            "risk_level": "High",
+            "risk_level": "High Risk",
             "count": high,
         },
         {
-            "risk_level": "Medium",
+            "risk_level": "Medium Risk",
             "count": medium,
         },
         {
-            "risk_level": "Low",
+            "risk_level": "Low Risk",
             "count": low,
         },
     ]
@@ -109,19 +109,19 @@ def get_department_risk_distribution(db: Session):
             Student.department.label("department"),
             func.sum(
                 case(
-                    (Prediction.risk_level == "High", 1),
+                    (Prediction.risk_level == "High Risk", 1),
                     else_=0,
                 )
             ).label("high"),
             func.sum(
                 case(
-                    (Prediction.risk_level == "Medium", 1),
+                    (Prediction.risk_level == "Medium Risk", 1),
                     else_=0,
                 )
             ).label("medium"),
             func.sum(
                 case(
-                    (Prediction.risk_level == "Low", 1),
+                    (Prediction.risk_level == "Low Risk", 1),
                     else_=0,
                 )
             ).label("low"),
@@ -152,19 +152,19 @@ def get_semester_risk_distribution(db: Session):
             Student.semester.label("semester"),
             func.sum(
                 case(
-                    (Prediction.risk_level == "High", 1),
+                    (Prediction.risk_level == "High Risk", 1),
                     else_=0,
                 )
             ).label("high"),
             func.sum(
                 case(
-                    (Prediction.risk_level == "Medium", 1),
+                    (Prediction.risk_level == "Medium Risk", 1),
                     else_=0,
                 )
             ).label("medium"),
             func.sum(
                 case(
-                    (Prediction.risk_level == "Low", 1),
+                    (Prediction.risk_level == "Low Risk", 1),
                     else_=0,
                 )
             ).label("low"),

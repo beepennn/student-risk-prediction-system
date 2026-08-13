@@ -2,11 +2,11 @@
 
 ## Input Dataset
 
-`C:\Users\Asus\student-risk-prediction-system\ml\data\raw\student_performance_new_with_gpa_semester.csv`
+`C:\Users\bipin\student-risk-prediction-system\ml\data\raw\student_performance_new_with_gpa_semester.csv`
 
 ## Output Dataset
 
-`C:\Users\Asus\student-risk-prediction-system\ml\data\processed\student_performance_processed.csv`
+`C:\Users\bipin\student-risk-prediction-system\ml\data\processed\student_performance_processed.csv`
 
 ## Rows
 

@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from app.core.config import settings
  
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -40,6 +41,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        settings.FRONTEND_URL,
         "http://localhost:5173",
     ],
     allow_credentials=True,
