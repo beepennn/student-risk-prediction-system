@@ -32,10 +32,6 @@ from src.data.create_target import (
 )
 
 
-# ============================================================
-# 1. PROJECT PATHS
-# ============================================================
-
 ML_ROOT = (
     Path(__file__)
     .resolve()
@@ -73,11 +69,6 @@ COMBINED_DATA_PATH = (
     / "processed"
     / "combined_training_data.csv"
 )
-
-
-# ============================================================
-# 2. FEATURE DEFINITIONS
-# ============================================================
 
 FEATURE_COLUMNS = [
     "attendance",
@@ -118,10 +109,6 @@ GENDERS = [
 RANDOM_STATE = 42
 
 
-# ============================================================
-# 3. NORMALISATION HELPERS
-# ============================================================
-
 def normalize_gender(
     value: object,
 ) -> str:
@@ -156,11 +143,6 @@ def create_one_hot_encoder() -> OneHotEncoder:
             handle_unknown="ignore",
             sparse=False,
         )
-
-
-# ============================================================
-# 4. EVALUATE GENERAL MODEL PERFORMANCE
-# ============================================================
 
 def evaluate_model(
     model_name: str,
@@ -269,11 +251,6 @@ def evaluate_model(
         "Macro F1": macro_f1,
     }
 
-
-# ============================================================
-# 5. CREATE GENDER QUOTAS
-# ============================================================
-
 def create_gender_quotas(
     rows_per_class: int,
 ) -> dict[str, int]:
@@ -308,10 +285,6 @@ def create_gender_quotas(
 
     return quotas
 
-
-# ============================================================
-# 6. GENERATE RISK- AND GENDER-BALANCED DATA
-# ============================================================
 
 def generate_balanced_synthetic_data(
     rows_per_class: int = 1000,
@@ -561,10 +534,6 @@ def generate_balanced_synthetic_data(
     return synthetic_dataframe
 
 
-# ============================================================
-# 7. VALIDATE DATASET
-# ============================================================
-
 def validate_dataset(
     dataframe: pd.DataFrame,
 ) -> None:
@@ -705,10 +674,6 @@ def validate_dataset(
         )
 
 
-# ============================================================
-# 8. CREATE FAIRNESS-AWARE SAMPLE WEIGHTS
-# ============================================================
-
 def create_fairness_weights(
     features: pd.DataFrame,
     target: pd.Series,
@@ -822,11 +787,6 @@ def create_fairness_weights(
 
     return fairness_weights
 
-
-# ============================================================
-# 9. CREATE PREPROCESSING PIPELINE
-# ============================================================
-
 def create_preprocessor() -> ColumnTransformer:
     numeric_pipeline = Pipeline(
         steps=[
@@ -856,11 +816,6 @@ def create_preprocessor() -> ColumnTransformer:
         remainder="drop",
     )
 
-
-# ============================================================
-# 10. CREATE BASELINE PIPELINE
-# ============================================================
-
 def create_baseline_pipeline() -> Pipeline:
     return Pipeline(
         steps=[
@@ -886,10 +841,6 @@ def create_baseline_pipeline() -> Pipeline:
         ]
     )
 
-
-# ============================================================
-# 11. GENDER FAIRNESS REPORT
-# ============================================================
 
 def evaluate_gender_fairness(
     model_name: str,
@@ -1087,11 +1038,6 @@ def evaluate_gender_fairness(
 
     return fairness_dataframe
 
-
-# ============================================================
-# 12. TEST OBVIOUS EXAMPLES
-# ============================================================
-
 def get_obvious_test_cases() -> list[
     dict[str, object]
 ]:
@@ -1230,10 +1176,6 @@ def test_obvious_examples(
         "\nAll obvious risk tests passed."
     )
 
-
-# ============================================================
-# 13. GENDER SENSITIVITY TEST
-# ============================================================
 
 def test_gender_sensitivity(
     model: Pipeline,
@@ -1426,10 +1368,6 @@ def test_gender_sensitivity(
         report_rows
     )
 
-
-# ============================================================
-# 14. TRAIN MODELS
-# ============================================================
 
 def train_models() -> None:
     if not DATA_PATH.exists():
@@ -2103,11 +2041,6 @@ def train_models() -> None:
         REPORT_DIR
         / "gender_sensitivity_report.csv"
     )
-
-
-# ============================================================
-# 15. ENTRY POINT
-# ============================================================
 
 if __name__ == "__main__":
     train_models()
