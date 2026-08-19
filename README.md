@@ -386,17 +386,6 @@ These values correspond to the independent test dataset used during model evalua
 
 ---
 
-# Team Members
-
-| Member                   | Responsibility                                        |
-| ------------------------ | ----------------------------------------------------- |
-| **Aadarsha Subedi**      | Frontend Development                                  |
-| **Bipin Lamsal**         | Backend Development, API Design, Database Integration |
-| **Kishor Chandra Bhatt** | Machine Learning, Model Training, SHAP Explainability |
-| **Sneha Lamichhane**     | Documentation, Testing, and UI Support                |
-
----
-
 # Project Status
 
 The major project components have been implemented and integrated, including:
