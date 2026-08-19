@@ -1,147 +1,183 @@
-# AI-Based Student Academic Risk Prediction and Performance Monitoring System
+# StudentAlert: AI-Based Early Warning System for Identifying At-Risk Students
 
-An intelligent web-based platform that predicts students' academic risk using Machine Learning, provides explainable predictions through SHAP, and assists teachers in monitoring student performance through recommendations, notifications, and intervention management.
+StudentAlert is a web-based academic monitoring and early-warning system that uses Machine Learning to classify students according to academic risk and Explainable Artificial Intelligence (XAI) to provide interpretable prediction results.
 
----
-
-# Overview
-
-The **AI-Based Student Academic Risk Prediction and Performance Monitoring System** is designed to identify students who are at risk of poor academic performance before they fail.
-
-The system combines:
-
-- Machine Learning
-- Explainable AI (SHAP)
-- Academic Analytics
-- Teacher Intervention
-- Student Performance Monitoring
-
-to support timely academic decisions.
+The system is designed to help educational institutions identify students who may require academic attention and support teachers and administrators through academic monitoring, recommendations, notifications, reporting, analytics, and intervention management.
 
 ---
 
-# Key Features
+## Overview
 
-## Authentication
+StudentAlert combines academic data management, machine learning prediction, explainability, and academic-support functionality within a single role-based platform.
 
-- JWT Authentication
-- Secure Password Hashing (bcrypt)
-- Role-based Access Control
-  - Admin
-  - Teacher
-  - Student
-
----
-
-## Student Management
-
-- Student Registration
-- Student Profile
-- Department Management
-- Semester Management
-
----
-
-## Academic Records
-
-- Attendance
-- Internal Marks
-- Assignment Scores
-- Quiz Scores
-- Previous GPA
-
----
-
-## AI Risk Prediction
-
-- Random Forest Classifier
-- Academic Risk Prediction
-- Prediction Probability
-- Automatic Risk Classification
-
-Risk Levels
+The system uses a **Random Forest classifier** to classify students into:
 
 - Low Risk
 - Medium Risk
 - High Risk
 
----
+The prediction process is supplemented by **SHAP (SHapley Additive exPlanations)** to show the contribution of individual academic features to a prediction.
 
-## Explainable AI
+The platform provides dedicated interfaces for:
 
-Using SHAP (SHapley Additive exPlanations)
-
-Provides:
-
-- Feature Importance
-- Prediction Explanation
-- Student-specific explanations
+- Administrator
+- Teacher
+- Student
 
 ---
 
-## Recommendations
+## Key Features
 
-Automatically generated recommendations based on prediction.
+### Authentication and Authorization
 
-Examples:
+- JWT-based authentication
+- Password hashing
+- Role-based access control
+- Administrator, Teacher, and Student roles
 
-- Increase attendance
-- Improve assignment completion
-- Schedule counselling
-- Meet course instructor
+### Student and User Management
 
----
+- Student profile management
+- Teacher management
+- Department and semester information
+- Role-based account access
 
-## Notification System
+### Academic Record Management
 
-Automatic notifications for:
+The system manages academic indicators including:
 
-- Students
-- Teachers
-- Parents (Email)
+- Attendance
+- Internal Marks
+- Assignment Score
+- Quiz Score
+- Previous GPA
+- Semester
+- Gender
 
----
+### AI-Based Risk Prediction
 
-## Teacher Intervention
+The machine learning component uses a **Random Forest classification model** to generate:
 
-Teachers can
+- Academic risk classification
+- Risk probabilities
+- Confidence information
+- Low Risk, Medium Risk, and High Risk classification
 
-- View student profile
-- Review predictions
-- Add intervention notes
+### Explainable AI
+
+SHAP is integrated with the Random Forest prediction pipeline to provide:
+
+- Feature-level contributions
+- Individual prediction explanations
+- Prediction-specific risk-factor information
+
+### Recommendations
+
+The system connects prediction results with academic recommendations.
+
+Examples include:
+
+- Improving attendance
+- Improving assignment performance
+- Seeking academic guidance
+- Consulting the course instructor
+
+### Notifications
+
+The system provides notification functionality for relevant academic and system events.
+
+### Teacher Intervention
+
+Teachers can:
+
+- Search and filter students
+- View student profiles
+- Review academic records
+- Review prediction results
+- Inspect SHAP explanations
+- Review recommendations
+- Record intervention actions and remarks
 - Track intervention history
 
----
+### Reports and Analytics
 
-## Reports & Analytics
+The platform provides:
 
-- Dashboard Summary
-- Department Reports
-- Semester Reports
-- High Risk Students
-- Medium Risk Students
-- Low Risk Students
-- Latest Predictions
-- Intervention Summary
+- Dashboard summaries
+- Academic-risk analytics
+- Risk-level monitoring
+- Student prediction information
+- Intervention information
+- Academic reports
+- CSV-based data export where applicable
 
 ---
 
 # System Architecture
 
-```
-Frontend (React + TypeScript)
-            │
-            │ REST API
-            ▼
-Backend (FastAPI)
-            │
-            ├──────── PostgreSQL (Supabase)
-            │
-            └──────── Machine Learning Module
-                        │
-                        ├── Random Forest
-                        ├── SHAP
-                        └── Recommendation Engine
+```text
+                    USERS
+      ┌──────────────┼──────────────┐
+      │              │              │
+  Administrator    Teacher       Student
+      │              │              │
+      └──────────────┼──────────────┘
+                     │
+                     ▼
+        ┌─────────────────────────┐
+        │ Frontend                │
+        │ React + TypeScript      │
+        └────────────┬────────────┘
+                     │ REST API
+                     ▼
+        ┌─────────────────────────┐
+        │ Backend                 │
+        │ FastAPI + Python        │
+        └──────┬──────────┬───────┘
+               │          │
+               │          ▼
+               │   ┌─────────────────┐
+               │   │ Machine Learning│
+               │   │ Random Forest   │
+               │   │ + SHAP          │
+               │   └─────────────────┘
+               │
+               ▼
+        ┌─────────────────────────┐
+        │ PostgreSQL / Supabase   │
+        └─────────────────────────┘
+````
+
+---
+
+# Machine Learning Workflow
+
+```text
+Student Academic Data
+        │
+        ▼
+Data Preparation
+        │
+        ▼
+Feature Preprocessing
+        │
+        ▼
+Random Forest Classifier
+        │
+        ▼
+Risk Probabilities
+        │
+        ▼
+Risk Classification
+        │
+        ▼
+SHAP Explanation
+        │
+        ├──────────────► Recommendation
+        │
+        ├──────────────► Notification
+        │
+        └──────────────► Teacher Intervention
 ```
 
 ---
@@ -150,55 +186,55 @@ Backend (FastAPI)
 
 ## Frontend
 
-- React
-- TypeScript
-- Tailwind CSS
-- Axios
-- React Router
-
----
+* React
+* TypeScript
+* Tailwind CSS
+* Axios
+* React Router
+* TanStack React Query
+* React Hook Form
+* Zod
+* Recharts
 
 ## Backend
 
-- FastAPI
-- SQLAlchemy
-- Pydantic
-- JWT Authentication
-- bcrypt
-
----
+* Python
+* FastAPI
+* SQLAlchemy
+* Pydantic
+* JWT Authentication
+* bcrypt
 
 ## Database
 
-- PostgreSQL
-- Supabase
+* PostgreSQL
+* Supabase
 
----
+## Machine Learning and Data Processing
 
-## Machine Learning
-
-- Scikit-Learn
-- Random Forest
-- SHAP
-- Pandas
-- NumPy
-
----
+* Python
+* Scikit-learn
+* Random Forest
+* SHAP
+* Pandas
+* NumPy
+* Joblib
 
 ## Development Tools
 
-- Git
-- GitHub
-- VS Code
-- Postman
+* Git
+* GitHub
+* Visual Studio Code
+* Postman
+* Google Chrome / Microsoft Edge
 
 ---
 
 # Project Structure
 
-```
+```text
 student-risk-prediction-system/
-
+│
 ├── backend/
 │   ├── app/
 │   ├── migrations/
@@ -223,23 +259,43 @@ student-risk-prediction-system/
 
 ## Backend
 
+From the project root:
+
 ```bash
 cd backend
 
 python -m venv venv
+```
 
-source venv/bin/activate
-# Windows
+### Windows
+
+```powershell
 venv\Scripts\activate
+```
 
+### Linux / macOS
+
+```bash
+source venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
 pip install -r requirements.txt
+```
 
+Run the backend:
+
+```bash
 uvicorn app.main:app --reload
 ```
 
 ---
 
 ## Frontend
+
+Open another terminal:
 
 ```bash
 cd frontend
@@ -251,112 +307,136 @@ npm run dev
 
 ---
 
-## Machine Learning
+## Machine Learning Environment
+
+From the project root:
 
 ```bash
 cd ml
+```
 
+Install the required machine-learning dependencies:
+
+```bash
 pip install -r requirements.txt
 ```
 
----
-
-# Authentication
-
-The system supports
-
-- Admin
-- Teacher
-- Student
-
-using JWT Authentication.
+The trained model, evaluation outputs, feature-importance results, fairness results, and SHAP analysis are maintained under the `ml/` directory.
 
 ---
 
 # API Documentation
 
-After running FastAPI
+When the FastAPI backend is running:
 
-Swagger UI
+### Swagger UI
 
-```
+```text
 http://localhost:8000/docs
 ```
 
-ReDoc
+### ReDoc
 
-```
+```text
 http://localhost:8000/redoc
 ```
 
 ---
 
-# Machine Learning Workflow
+# Risk Classification
 
+StudentAlert uses three academic-risk categories:
+
+| Risk Level      | Description                                                                                    |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| **Low Risk**    | Academic indicators correspond to satisfactory performance.                                    |
+| **Medium Risk** | Academic indicators indicate moderate academic concern and monitoring may be required.         |
+| **High Risk**   | Academic indicators indicate substantial academic concern and may require timely intervention. |
+
+---
+
+# Model Evaluation
+
+The selected Random Forest model was evaluated using:
+
+* Accuracy
+* Balanced Accuracy
+* Macro Precision
+* Macro Recall
+* Macro F1-score
+* Confusion Matrix
+* Learning Curve
+* Training vs. Testing Performance
+* Feature Importance
+* SHAP Explainability
+* Gender Fairness Evaluation
+* Gender Sensitivity Testing
+
+The final evaluated model achieved:
+
+```text
+Accuracy:           93.38%
+Balanced Accuracy:  93.46%
+Macro Precision:    92.39%
+Macro Recall:       93.46%
+Macro F1-Score:     92.91%
 ```
-Student Academic Records
 
-        ↓
-
-Feature Engineering
-
-        ↓
-
-Random Forest Model
-
-        ↓
-
-Risk Prediction
-
-        ↓
-
-SHAP Explanation
-
-        ↓
-
-Recommendation Engine
-
-        ↓
-
-Notification System
-```
+These values correspond to the independent test dataset used during model evaluation.
 
 ---
 
 # Team Members
 
-| Member | Responsibility |
-|---------|----------------|
-| **Bipin Lamsal** | Backend Development, API Design, Database Integration |
+| Member                   | Responsibility                                        |
+| ------------------------ | ----------------------------------------------------- |
+| **Aadarsha Subedi**      | Frontend Development                                  |
+| **Bipin Lamsal**         | Backend Development, API Design, Database Integration |
 | **Kishor Chandra Bhatt** | Machine Learning, Model Training, SHAP Explainability |
-| **Aadarsha Subedi** | Frontend Development |
-| **Sneha Lamichhane** | Documentation, Testing, UI Support |
+| **Sneha Lamichhane**     | Documentation, Testing, and UI Support                |
 
 ---
 
-# Current Project Status
+# Project Status
 
-- ✅ Backend APIs Completed
-- ✅ Database Integration Completed
-- ✅ Authentication Completed
-- ✅ Dashboard APIs Completed
-- ✅ Reports Module Completed
-- ✅ Recommendation System Completed
-- ✅ Notification System Completed
-- ✅ Intervention Module Completed
-- 🔄 Machine Learning Integration (Final Model Pending)
-- 🔄 Frontend Integration In Progress
+The major project components have been implemented and integrated, including:
+
+* Backend APIs
+* Database integration
+* Authentication and authorization
+* Student and teacher management
+* Academic-record management
+* Dashboard functionality
+* Machine learning prediction
+* SHAP explainability
+* Recommendation functionality
+* Notification functionality
+* Teacher intervention functionality
+* Reports and analytics
+* Frontend role-based interfaces
+* Model evaluation and fairness analysis
+* System integration and testing
 
 ---
 
-# Future Enhancements
+# Limitations
 
-- Real-time Prediction Updates
-- SMS Notifications
-- Advanced Analytics Dashboard
-- Deep Learning Models
-- Mobile Application
-- LMS Integration
+The machine learning model was developed using a publicly available student-performance dataset because the expected departmental dataset was unavailable during the project period.
+
+The dataset was supplemented with balanced synthetic records to support the required three-class classification. Therefore, the model may not fully represent the academic characteristics of a specific institution.
+
+Further validation using real institutional academic records would be required for institution-specific deployment.
+
+---
+
+# Future Enhancement
+
+Future work may focus on:
+
+* Retraining the model using larger institution-specific datasets
+* Improving risk-target generation using validated academic outcomes
+* Extending model comparison, calibration, and explainability analysis
+* Evaluating intervention outcomes and improving personalized recommendations
 
 ---
 
@@ -368,4 +448,4 @@ This project was developed as a **Minor Project** for academic purposes.
 
 # Acknowledgements
 
-Special thanks to all project team members for their contributions in backend development, frontend development, machine learning, documentation, and testing.
+The project team would like to express sincere gratitude to the project supervisor, project coordinator, department leadership, and everyone who provided guidance, feedback, and support throughout the development and documentation of StudentAlert.
